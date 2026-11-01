@@ -1,0 +1,16 @@
+export const audioBalanceLabels:Record<string,string> = {
+ title:'Balans lektora i gry',enabled:'Przyciszaj grę podczas mowy lektora',
+ hint:'Zmienia tylko wybraną aplikację. Po wypowiedzi płynnie przywraca jej wcześniejszą głośność.',
+ application:'Aplikacja z dźwiękiem gry',choose:'Wybierz aplikację',refresh:'Odśwież aplikacje audio',
+ notLoaded:'Uruchom grę z dźwiękiem i odśwież listę. Wybór okna nie wybiera automatycznie aplikacji audio.',
+ loading:'Pobieranie aplikacji audio…',loadError:'Nie udało się pobrać listy aplikacji audio.',
+ missing:'Brak bezpiecznie rozpoznanych aplikacji. Uruchom dźwięk w grze i odśwież listę.',
+ saved:'Zapisana aplikacja — obecnie niewidoczna',ambiguous:'Kilka procesów — wybór niejednoznaczny',
+ depth:'Siła przyciszania',gentle:'Łagodna (−6 dB)',balanced:'Średnia (−12 dB)',strong:'Mocna (−18 dB)',
+ normalize:'Wyrównuj poziom lektora',
+ normalizeHint:'Ograniczone wyrównanie głośności mowy z zapasem na szczyty. Nie zmienia Szybkiego odczytu.',
+ baseline:'Nie zmienia głośności głównej ani nie oddziela dialogów gry od muzyki. Ręczna regulacja w mikserze oddaje Ci sterowanie do ponownego włączenia czytania.',
+ off:'Balans nieaktywny',ready:'Balans gotowy',ducking:'Przyciszanie gry',restoring:'Przywracanie głośności',
+ manual:'Ręczna regulacja — oddano sterowanie',error:'Balans niedostępny',
+ changed:'Zmiana strumienia gry — sprawdź normalną głośność i wznów czytanie',
+};

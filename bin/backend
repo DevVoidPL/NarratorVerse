@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+export PYTHONPATH="$ROOT/backend:$ROOT/.runtime/lib/python3.13/site-packages${PYTHONPATH:+:$PYTHONPATH}"
+export QT_QPA_PLATFORM=offscreen
+export QT_QUICK_BACKEND=software
+export PATH="$ROOT/.runtime/bin:$PATH"
+export LD_LIBRARY_PATH="$ROOT/.runtime/lib:$ROOT/.runtime/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export GST_PLUGIN_PATH="$ROOT/.runtime/lib/gstreamer-1.0${GST_PLUGIN_PATH:+:$GST_PLUGIN_PATH}"
+export GST_PLUGIN_SCANNER="$ROOT/.runtime/libexec/gstreamer-1.0/gst-plugin-scanner"
+export XDG_DATA_DIRS="$ROOT/.runtime/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+if [ -x "$ROOT/.runtime/bin/python3" ]; then
+  exec "$ROOT/.runtime/bin/python3" -m narratorverse.main "$@"
+fi
+exec python3 -m narratorverse.main "$@"

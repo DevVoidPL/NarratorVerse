@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ ! -x "$ROOT/src-tauri/target/release/narratorverse" ]; then
+  printf '%s\n' 'Brak zbudowanego NarratorVerse. Uruchom scripts/build.sh.' >&2
+  exit 1
+fi
+export NARRATORVERSE_ROOT="$ROOT"
+if [ -f /.flatpak-info ]; then exec "$ROOT/src-tauri/target/release/narratorverse" "$@"; fi
+# Use the eventual application's private XDG roots even when running a runtime.
+STORE="$HOME/.var/app/io.github.DevVoidPL.NarratorVerse"
+mkdir -p "$STORE/config" "$STORE/data" "$STORE/cache" "$STORE/.local/state"
+exec flatpak run --filesystem="$ROOT" --filesystem="$STORE" --share=ipc --share=network --socket=wayland --socket=fallback-x11 --socket=pulseaudio --device=dri --env=XDG_CONFIG_HOME="$STORE/config" --env=XDG_DATA_HOME="$STORE/data" --env=XDG_CACHE_HOME="$STORE/cache" --env=XDG_STATE_HOME="$STORE/.local/state" --env=NARRATORVERSE_ROOT="$ROOT" --command="$ROOT/src-tauri/target/release/narratorverse" org.gnome.Platform//49 "$@"

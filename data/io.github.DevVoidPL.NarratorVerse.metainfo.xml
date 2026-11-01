@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.DevVoidPL.NarratorVerse</id>
+  <name>NarratorVerse</name>
+  <summary>Lektor napisów do gier na Linuksa</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.devvoidpl"><name>DevVoidPL</name></developer>
+  <description>
+    <p>NarratorVerse rozpoznaje napisy z wybranego obszaru okna lub ekranu,
+    tłumaczy angielski tekst na polski i czyta go lokalnym głosem Piper.</p>
+    <p>Szybki odczyt czyta wklejony polski tekst bez przechwytywania, OCR
+    i tłumaczenia. Ma osobne ustawienia głosu, tempa i głośności.</p>
+    <p>Aplikacja zawiera głos Voidek za zgodą właściciela. Program jest rozwijany;
+    jakość odczytu zależy od napisów i zaznaczonego obszaru.</p>
+  </description>
+  <launchable type="desktop-id">io.github.DevVoidPL.NarratorVerse.desktop</launchable>
+  <provides><binary>narratorverse</binary></provides>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="0.1.0" date="2026-10-31" type="development"/></releases>
+</component>

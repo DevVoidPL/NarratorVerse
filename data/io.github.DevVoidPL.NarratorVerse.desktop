@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NarratorVerse
+Comment=Lokalne rozpoznawanie, tłumaczenie i czytanie napisów
+Comment[pl]=Lokalne rozpoznawanie, tłumaczenie i czytanie napisów
+Exec=narratorverse
+Icon=io.github.DevVoidPL.NarratorVerse
+Terminal=false
+Categories=AudioVideo;
+StartupNotify=true
+StartupWMClass=narratorverse

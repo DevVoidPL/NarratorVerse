@@ -1,0 +1,19 @@
+{
+  "app-id": "io.github.DevVoidPL.NarratorVerse",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "49",
+  "sdk": "org.gnome.Sdk",
+  "command": "narratorverse",
+  "finish-args": [
+    "--share=ipc", "--share=network", "--socket=wayland",
+    "--socket=fallback-x11", "--socket=pulseaudio", "--device=dri"
+  ],
+  "modules": [
+    {
+      "name": "narratorverse-local-snapshot",
+      "buildsystem": "simple",
+      "build-commands": ["python3 scripts/stage-flatpak.py --dest /app"],
+      "sources": [{"type": "dir", "path": "..", "skip": [".private", "reference", ".tools", "node_modules", "flatpak/build", "flatpak/repo", "flatpak/artifacts"]}]
+    }
+  ]
+}
