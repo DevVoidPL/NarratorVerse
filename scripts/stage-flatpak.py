@@ -16,6 +16,12 @@ def copy_tree(source, destination):
     if not source.is_dir(): raise RuntimeError(f'Missing input directory: {source}')
     for path in source.rglob('*'):
         if path.is_symlink(): raise RuntimeError(f'Symlink not allowed in snapshot: {path}')
+        relative = path.relative_to(source)
+        if '.pytest_cache' in relative.parts: continue
+        if source in (ROOT / 'backend', ROOT / 'bin', ROOT / 'licenses') and any(
+            part.startswith('.') for part in relative.parts
+        ):
+            raise RuntimeError(f'Hidden file not allowed in application sources: {path}')
     shutil.copytree(source, destination, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.pytest_cache'))
 
 
@@ -61,11 +67,11 @@ def stage(destination):
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             inventory[str(path.relative_to(destination))] = {'bytes': path.stat().st_size, 'sha256': digest}
     (app / 'licenses/snapshot-files.json').write_text(json.dumps(inventory, indent=2))
-    forbidden = ('tts.custom-voices', '.private', 'reference', 'profiles.json', 'capture-grants.json', 'translation-cache.sqlite3')
+    forbidden = ('tts.custom-voices', 'profiles.json', 'quick-read.json', 'capture-grants.json', 'audio-balance-recovery.json', 'translation-cache.sqlite3')
     for path in destination.rglob('*'):
         if any(part in forbidden for part in path.relative_to(destination).parts):
             raise RuntimeError(f'Forbidden package input: {path}')
-    print(f'Staged {len(inventory)} files; owner-authorized Voidek included; user data and custom voices excluded.')
+    print(f'Staged {len(inventory)} files; Voidek included; profiles and custom voices excluded.')
 
 
 if __name__ == '__main__':
