@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble a local snapshot with owner-authorized Voidek, never user data."""
+"""Assemble a local runtime snapshot without profiles or custom voices."""
 import argparse
 import hashlib
 import importlib.metadata

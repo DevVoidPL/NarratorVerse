@@ -5,8 +5,6 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 export PATH="$ROOT/.tools/node-v22.22.0-linux-x64/bin:$PATH"
 
-# Fail explicitly on a wrong/incomplete project instead of compileall silently
-# reporting missing paths. This script can be called from fish via sh.
 test -f "$ROOT/package.json"
 test -d "$ROOT/backend"
 test -f "$ROOT/tests/test_quick_read.py"

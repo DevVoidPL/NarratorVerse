@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import ts from 'typescript';
 
-// Use the project's existing compiler; no added test framework or browser mock.
 const source=await readFile(new URL('../../src/profileDraft.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const {createDraft,receiveProfile,editDraft,editOcr,isDirty,savePayload,savedMatches}=
@@ -59,7 +58,6 @@ test('UI uses Polish labels only; language of subtitles remains selectable',asyn
  assert.ok(app.includes("rpc('settings',savePayload(submitted))"));
  assert.ok(app.includes('savedMatches(submitted,saved)'));
  const {compile}=await import('svelte/compiler');
- // Compile without running Tauri. Also check the two dialogs/icons components.
  for(const name of ['App','RegionEditor','Icon']){
    const code=await readFile(new URL(`../../src/${name}.svelte`,import.meta.url),'utf8');
    const result=compile(code,{filename:`${name}.svelte`,generate:'client'});
