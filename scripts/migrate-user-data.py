@@ -38,7 +38,6 @@ def migrate(source, destination):
             target = destination / new / NEW_SLUG / relative
             if target.exists(): raise FileExistsError(f'Refusing to overwrite new data: {target}')
             planned.append((p, target))
-    # Fail before making any changes if a destination already contains user data.
     report = {'status': 'migrated', 'source_identity': OLD_ID, 'identity': NEW_ID,
               'portal_grants': 'not_copied_application_scoped', 'files': []}
     destination.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -50,7 +49,6 @@ def migrate(source, destination):
         digest = hashlib.sha256(new.read_bytes()).hexdigest()
         if digest != hashlib.sha256(old.read_bytes()).hexdigest(): raise RuntimeError(f'Copy verification failed: {old}')
         report['files'].append({'path': str(new.relative_to(destination)), 'sha256': digest})
-    # Atomic marker records completion. Old data remains untouched as rollback.
     temporary = marker.with_suffix('.tmp')
     with temporary.open('x') as stream: json.dump(report, stream, indent=2)
     os.chmod(temporary, 0o600)

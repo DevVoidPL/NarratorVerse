@@ -1,4 +1,3 @@
-"""Native FileChooser portal; grant access to both Piper files, not the whole home."""
 import asyncio
 import shutil
 import tempfile

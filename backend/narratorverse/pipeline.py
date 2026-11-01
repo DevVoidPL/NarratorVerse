@@ -1,4 +1,3 @@
-"""Standalone lifecycle controls; inference and recognition remain upstream."""
 from dataclasses import replace
 from game_optimization_linux.services.narrator_pipeline import NarratorPipeline, SubtitleTextGate
 

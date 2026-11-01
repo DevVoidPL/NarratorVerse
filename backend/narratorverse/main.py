@@ -1,4 +1,3 @@
-"""Qt backend event loop, managed via JSON stdin/stdout, without QML/game hooks."""
 from __future__ import annotations
 import json
 import logging

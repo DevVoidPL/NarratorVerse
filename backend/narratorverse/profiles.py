@@ -1,4 +1,3 @@
-"""Named profiles with stable identities, not window titles or process IDs."""
 import json
 from copy import deepcopy
 from dataclasses import replace

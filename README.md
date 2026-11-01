@@ -42,9 +42,8 @@ niezapisane zmiany, a przejscie do innego profilu wymaga ich odrzucenia.
 Zamkniecie aplikacji bez zapisu nie zachowuje edytowanego formularza.
 
 Profil pamieta m.in. obszar napisow, silnik OCR, jezyk, glos, tempo i aplikacje
-audio. Zapis pliku jest atomowy. Interfejs pobiera stan po zapisie, zanim
-wyswietli potwierdzenie. Przywrocenie domyslnych ustawien wymaga potwierdzenia
-i zapisuje sie od razu; nie usuwa modeli ani wlasnych glosow.
+audio. Przywrocenie domyslnych ustawien wymaga potwierdzenia i zapisuje sie
+od razu; nie usuwa modeli ani wlasnych glosow.
 
 Szybki odczyt ma osobne opcje glosu, tempa i glosnosci, zapisywane automatycznie.
 Czyta do 10 000 znakow polskiego tekstu. Nie uruchamia OCR ani tlumaczenia.
@@ -65,11 +64,10 @@ i metadanych pozwalajacych rozpoznac strumien. Zmiana strumienia moze wstrzymac
 balans; sprawdz wtedy poziom gry i wznow czytanie. Osobny proces i dziennik
 pomagaja przywrocic glosnosc po utracie polaczenia z silnikiem. Nie gwarantuja
 przywrocenia po smierci obu procesow, zmianie tozsamosci strumienia lub zaniku
-zasilania. `pactl` nie oferuje atomowego porownania i zapisu.
+zasilania.
 
-Wyrownanie poziomu lektora jest ograniczonym przyblizeniem RMS dla PCM s16le,
-do 1 MiB danych, ze wzmocnieniem do 2x i zapasem na szczyty. Nie jest pomiarem
-LUFS ani analiza glosnosci gry. Nie dotyczy Szybkiego odczytu.
+Wyrownanie poziomu lektora ma ograniczone wzmocnienie i chroni przed
+przesterowaniem. Nie analizuje glosnosci gry ani nie dotyczy Szybkiego odczytu.
 
 ## Ograniczenia
 
@@ -99,64 +97,39 @@ Obecne skrypty budowania pakietu korzystaja z przygotowanych katalogow
 nie jest jeszcze przygotowana. Samo sklonowanie kodu nie wystarczy do
 zbudowania kompletnego Flatpaka.
 
-Przygotowane srodowisko korzysta z Node 22.22.0, GNOME SDK/Platform 49
-i rozszerzenia Rust SDK 25.08. Polecenia ponizej uruchamiaj z katalogu projektu;
-zmienna `ROOT` przechowuje jego pelna sciezke. Bloki dzialaja tez z fish:
+Do sprawdzenia i zbudowania interfejsu wystarczy Node.js z npm. W przygotowanym
+srodowisku uzywany jest Node 22.22.0. Polecenia uruchamiaj z katalogu projektu:
 
 ```sh
 sh -eu -c '
-  ROOT="$PWD"
-  cd "$ROOT"
   npm ci --no-audit --no-fund
   npm run check
-  npm run test:ui
   npm run build
 '
 ```
 
-Testy backendu wymagaja przygotowanego srodowiska Python/Qt oraz pytest.
-Lokalny skrypt uruchamia je w GNOME SDK bez uruchamiania aplikacji:
+Budowa aplikacji wymaga ponadto GNOME SDK/Platform 49 i rozszerzenia
+Rust SDK 25.08. Po przygotowaniu srodowiska:
 
 ```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/test.sh"'
-```
-
-Pozostale kontrole zrodel i interfejsu:
-
-```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/check-source.sh"'
-```
-
-Budowa interfejsu i Rust, po przygotowaniu srodowiska:
-
-```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/build.sh"'
+sh scripts/build.sh
 ```
 
 Samo pakowanie gotowego pliku wykonywalnego:
 
 ```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/build-flatpak.sh"'
+sh scripts/build-flatpak.sh
 ```
 
-Budowa i reinstalacja NarratorVerse bez kasowania danych uzytkownika
-(wczesniej zamknij aplikacje):
+Instalacja lokalnego pakietu (wczesniej zamknij aplikacje):
 
 ```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/reinstall.sh"'
+flatpak install --user --reinstall --bundle flatpak/artifacts/NarratorVerse-0.1.0-x86_64.flatpak
 ```
 
-Skrypt reinstalacji zachowuje poprzedni katalog budowania i wypisuje commit
-zainstalowanego pakietu. Pakowanie odmawia nadpisania istniejacego katalogu
-budowania. Lokalny, niepodpisany pakiet i suma SHA-256 trafiaja do katalogu
-artefaktow Flatpaka. Nie jest to jeszcze pakiet po pelnym audycie redystrybucji.
-
-## Testy
-
-Testy obejmuja przetwarzanie napisow, kolejke mowy, zapis i izolacje profili,
-obsluge bledow zapisu oraz balans na atrapach miksera. Testy interfejsu sprawdzaja
-stan formularza i kompilacje komponentow; nie zastepuja proby w oknie aplikacji.
-Znany oczekiwany blad dotyczy Tesseract i testowej czcionki pikselowej 5x7.
+Pakowanie odmawia nadpisania istniejacego katalogu budowania. Lokalny,
+niepodpisany pakiet i suma SHA-256 trafiaja do katalogu artefaktow Flatpaka.
+Nie jest to jeszcze pakiet po pelnym audycie redystrybucji.
 
 ## Licencje
 

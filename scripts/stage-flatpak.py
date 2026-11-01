@@ -33,7 +33,6 @@ def stage(destination):
     app.mkdir(parents=True)
     copy_tree(ROOT / 'backend', app / 'backend')
     copy_tree(ROOT / 'bin', app / 'bin')
-    # .runtime/python is an obsolete duplicate; Python imports from lib only.
     for name in ('lib', 'lib64', 'bin', 'share', 'libexec'):
         source = ROOT / '.runtime' / name
         if source.exists(): copy_tree(source, app / '.runtime' / name)

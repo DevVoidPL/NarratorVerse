@@ -93,7 +93,6 @@ async fn rpc(bridge: tauri::State<'_, Arc<Bridge>>, method: String, params: Valu
 fn main() {
     let app = tauri::Builder::default().setup(|app| {
         // Wayland shells resolve a named desktop icon, not just the embedded PNG.
-        // Keep GTK, the desktop entry and Flatpak on the exact same identity.
         #[cfg(target_os = "linux")]
         {
             use gtk::prelude::GtkWindowExt;

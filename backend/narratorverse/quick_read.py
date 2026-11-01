@@ -1,4 +1,3 @@
-"""Direct text-to-speech adapter. No capture, OCR, translation or profile writes."""
 import json
 import math
 import re

@@ -1,4 +1,3 @@
-"""Original verified installer with cancellable chunk transport and progress."""
 import hashlib
 import json
 from pathlib import Path
@@ -17,7 +16,6 @@ class ComponentManager(NarratorComponentManager):
         self.failures = {}
 
     def verified_status(self, component_id, runtime, bundled_root=BUNDLED_NARRATOR_COMPONENTS_DIR):
-        """Do not equate catalog presence or a Python import with an installed model."""
         definition = self._definition(component_id)
         row = asdict(self.status(component_id))
         directory = self.root / component_id
