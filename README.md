@@ -3,6 +3,24 @@
 Lektor napisow do gier na Linuksa. Czyta napisy z wybranego fragmentu okna
 lub ekranu i odtwarza je po polsku. Nie wymaga modyfikowania plikow gry.
 
+## Podglad
+
+![NarratorVerse - Lektor, profile i ustawienia glosu](docs/screenshots/lektor.png)
+
+<details>
+<summary>Rozpoznawanie napisow i balans dzwieku</summary>
+
+![Ustawienia OCR, jezyka napisow i przyciszania gry](docs/screenshots/ocr-balans.png)
+
+</details>
+
+<details>
+<summary>Szybki odczyt tekstu</summary>
+
+![Szybki odczyt - tekst, glos, tempo i glosnosc](docs/screenshots/szybki-odczyt.png)
+
+</details>
+
 ## Funkcje
 
 - Odczyt polskich napisow i lokalne tlumaczenie angielskich napisow na polski.
