@@ -1,3 +1,4 @@
+"""Named profiles with stable identities, not window titles or process IDs."""
 import json
 from copy import deepcopy
 from dataclasses import replace
@@ -6,6 +7,7 @@ from game_optimization_linux.config import CONFIG_DIR
 from game_optimization_linux.models.narrator import NarratorGameSettings
 from game_optimization_linux.services.narrator_persistence import _atomic_json_write
 from .audio_balance import validate_target
+from .quickmt_model import QUICKMT_PROVIDER_ID
 
 class Profiles:
     def __init__(self, path=CONFIG_DIR / 'profiles.json'):
@@ -14,6 +16,13 @@ class Profiles:
             self.data = json.loads(path.read_text())
             if self.data.get('version') != 1:
                 raise ValueError('Unsupported profile schema')
+            migrated = deepcopy(self.data)
+            for profile in migrated['profiles']:
+                # Translator selection is no longer a user option. Preserve all
+                # other profile fields, including the decoding quality profile.
+                profile['settings']['translation_provider_id'] = QUICKMT_PROVIDER_ID
+            if migrated != self.data:
+                self.commit(migrated)
         else:
             self.data = {'version': 1, 'selected': '', 'profiles': []}
             self.create('Domyślny')

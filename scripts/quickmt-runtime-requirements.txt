@@ -1,0 +1,4 @@
+# Official PyPI wheel: CPython 3.13, Linux x86_64, SentencePiece 0.2.1.
+# Native dependency only; never replaces the existing CTranslate2 runtime.
+sentencepiece @ https://files.pythonhosted.org/packages/96/df/0cfe748ace5485be740fed9476dee7877f109da32ed0d280312c94ec259f/sentencepiece-0.2.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl \
+    --hash=sha256:c7f0fd2f2693309e6628aeeb2e2faf6edd221134dfccac3308ca0de01f8dab47

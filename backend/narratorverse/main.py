@@ -1,3 +1,4 @@
+"""Qt backend event loop, managed via JSON stdin/stdout, without QML/game hooks."""
 from __future__ import annotations
 import json
 import logging
@@ -19,7 +20,7 @@ from game_optimization_linux.services.narrator_capture import PortalScreenCaptur
 from game_optimization_linux.services.narrator_portal import QtPortalScreenCastBackend
 from game_optimization_linux.services.narrator_ocr import TesseractOcrProvider
 from game_optimization_linux.services.narrator_rapidocr import RapidOcrProvider
-from game_optimization_linux.services.narrator_translation import ArgosCTranslate2TranslationProvider
+from .quickmt import QuickMTTranslationProvider
 from game_optimization_linux.services.narrator_tts import PiperPolishTtsProvider, validate_piper_voice_config
 from .pipeline import StandalonePipeline
 from game_optimization_linux.services.narrator_persistence import CaptureGrantRepository
@@ -32,6 +33,7 @@ from .quick_read import QuickRead
 from .filechooser import import_from_chooser
 from .runtime_checks import native_runtimes, tesseract_runtime
 from .audio_balance import AudioBalance, list_targets, normalize_speech
+from .experiments import DialogueTrace
 
 class NoGameRequirement:
     def is_active(self, _profile_id): return True
@@ -66,12 +68,15 @@ class AudioGate:
     def __getattr__(self, name): return getattr(self.audio, name)
     def play(self, pcm, **kwargs):
         if not self.capture.reading:
+            terminal = kwargs.get('terminal_callback')
+            if terminal is not None: terminal()
             return
         if self.normalize:
             pcm = normalize_speech(pcm)
         if self.balance is not None:
             epoch, request = self.balance.epoch, kwargs['request_id']
             started, completed, failed = kwargs['started_callback'], kwargs['completed_callback'], kwargs['error_callback']
+            terminal = kwargs.get('terminal_callback')
             def on_start(elapsed):
                 if (self.capture.reading and kwargs['volume'] > 0
                         and any(pcm.samples)):
@@ -81,6 +86,7 @@ class AudioGate:
             def on_terminal():
                 self.balance.finished(epoch, request)
                 self.balance.tick(self.capture.reading)
+                if terminal is not None: terminal()
             def on_complete():
                 self.balance.finished(epoch, request)
                 completed()
@@ -101,23 +107,30 @@ class Backend(QObject):
     def __init__(self, app, writer):
         super().__init__()
         self.app, self.writer = app, writer
+        # Optional developer trace only; never changes translator, cache or dedup.
+        trace_path = os.environ.get("NARRATORVERSE_DIAGNOSTIC_TRACE", "")
+        self.trace = DialogueTrace(Path(trace_path)) if trace_path else None
         self.pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix='narratorverse-adapter')
         seed()
         self.profiles = Profiles()
         self.capture = CaptureGate(PortalScreenCaptureProvider(QtPortalScreenCastBackend()))
         self.ocr = TesseractOcrProvider()
         self.rapid = RapidOcrProvider()
-        self.translator = ArgosCTranslate2TranslationProvider()
+        self.translator = QuickMTTranslationProvider()
         self.tts = PiperPolishTtsProvider()
         self.balance = AudioBalance(config.STATE_DIR)
-        self.audio = AudioGate(QtNarratorAudioOutput(), self.capture, self.balance)
+        self.audio = AudioGate(QtNarratorAudioOutput(
+            diagnostic=self.trace.emit if self.trace else None,
+            diagnostic_context=lambda: dict(self.pipeline.diagnostic_context(),
+                origin='dialogue' if self.capture.reading else 'auxiliary')), self.capture, self.balance)
         self.quick = QuickRead(PiperPolishTtsProvider(), self.audio.audio, self.emit)
         self.voice_job = False
         self.voice_cancelled = Event()
         self.components_refreshing = False
         self.region_confirmed = False
         self.region_required = False
-        self.pipeline = StandalonePipeline(self.capture, self.ocr, self.translator, self.tts, self.audio, NoGameRequirement(), ocr_providers=(self.rapid,))
+        self.pipeline = StandalonePipeline(self.capture, self.ocr, self.translator, self.tts, self.audio, NoGameRequirement(), ocr_providers=(self.rapid,),
+            diagnostic=self.trace.emit if self.trace else None)
         self.manager = ComponentManager(progress=lambda size,total: self.emit('download', {'bytes': size, 'total': total, 'component': self.component_job}))
         self.component_job = ''
         self.component_list = []
@@ -209,7 +222,7 @@ class Backend(QObject):
                        'ocr.english-local': tesseract and self.ocr.language_available('en'),
                        'ocr.polish-local': tesseract and self.ocr.language_available('pl'),
                        'ocr.rapidocr-local': native['rapidocr'] and self.rapid.available,
-                       'translation.opus-en-pl': native['translation'] and self.translator.available,
+                       self.translator.component_id: native['translation'] and self.translator.available,
                        'tts.voidek': native['piper'] and self.tts.voice_available('voidek-pl-e991')}
             return [self.manager.verified_status(c.component_id, runtime.get(c.component_id, False)) for c in self.manager.list_components()]
         self.async_job(None, refresh, 'component_status')
@@ -281,7 +294,8 @@ class Backend(QObject):
                 self.stop()
                 self.region_required = True
                 if method == 'change_source': CaptureGrantRepository().save_token(self.profiles.selected()['id'], '')
-                self.pipeline.start(self.profiles.settings())
+                settings = self.profiles.settings()
+                self.pipeline.start(settings)
                 self.preview_pending = True
             elif method == 'read':
                 if self.quick.busy: raise RuntimeError('Najpierw zatrzymaj Szybki odczyt')
@@ -406,6 +420,7 @@ class Backend(QObject):
         for provider in (self.ocr, self.rapid, self.translator, self.tts): provider.close()
         self.capture.close()
         self.pool.shutdown(wait=False, cancel_futures=True)
+        if self.trace: self.trace.close()
         self.app.quit()
 
 def main():

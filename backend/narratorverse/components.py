@@ -1,3 +1,4 @@
+"""Original verified installer with cancellable chunk transport and progress."""
 import hashlib
 import json
 from pathlib import Path
@@ -14,8 +15,20 @@ class ComponentManager(NarratorComponentManager):
         self.cancelled = Event()
         self.progress = progress
         self.failures = {}
+        self._download_done = 0
+        self._download_total = 0
+
+    def install(self, component_id):
+        definition = self._definition(component_id)
+        self._download_done = 0
+        self._download_total = sum(a.size_bytes for a in definition.resolved_artifacts())
+        try:
+            return super().install(component_id)
+        finally:
+            self._download_done = self._download_total = 0
 
     def verified_status(self, component_id, runtime, bundled_root=BUNDLED_NARRATOR_COMPONENTS_DIR):
+        """Do not equate catalog presence or a Python import with an installed model."""
         definition = self._definition(component_id)
         row = asdict(self.status(component_id))
         directory = self.root / component_id
@@ -86,7 +99,8 @@ class ComponentManager(NarratorComponentManager):
                 if size > artifact.size_bytes: raise RuntimeError('Component exceeds pinned size')
                 digest.update(chunk)
                 output.write(chunk)
-                self.progress(size, artifact.size_bytes)
+                self.progress(self._download_done + size, self._download_total or artifact.size_bytes)
         if self.cancelled.is_set(): raise RuntimeError('Pobieranie anulowane')
         if size != artifact.size_bytes or digest.hexdigest() != artifact.sha256:
             raise RuntimeError('Component SHA-256 or size verification failed')
+        self._download_done += size

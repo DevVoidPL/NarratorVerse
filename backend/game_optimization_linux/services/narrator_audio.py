@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 import logging
 import time
@@ -55,6 +55,7 @@ class _Playback:
     # re-recognised variant of the same subtitle is identifiable in the log.
     text: str = ""
     terminal_callback: Callable[[], None] | None = None
+    diagnostic_context: dict[str, object] = field(default_factory=dict)
 
     @property
     def expected_seconds(self) -> float:
@@ -99,12 +100,16 @@ class QtNarratorAudioOutput(QObject):
         sink_factory: Callable[..., Any] | None = None,
         device_provider: Callable[[], Any] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        diagnostic: Callable[..., None] | None = None,
+        diagnostic_context: Callable[[], dict[str, object]] | None = None,
     ) -> None:
         super().__init__(parent)
         # Injectable so truncated playback can be reproduced without a device.
         self._sink_factory = sink_factory or QAudioSink
         self._device_provider = device_provider or QMediaDevices.defaultAudioOutput
         self._clock = clock
+        self._diagnostic = diagnostic
+        self._diagnostic_context = diagnostic_context
         self._history: deque[PlaybackRecord] = deque(maxlen=10)
         self._completed_count = 0
         self._interrupted_count = 0
@@ -190,19 +195,31 @@ class QtNarratorAudioOutput(QObject):
                 started_callback=started_callback,
                 completed_callback=completed_callback,
                 error_callback=error_callback,
-                queued_at=time.monotonic(),
+                queued_at=self._clock(),
                 text=str(text),
                 terminal_callback=terminal_callback,
+                diagnostic_context=(self._diagnostic_context()
+                                    if self._diagnostic is not None and self._diagnostic_context else {}),
             )
         )
 
     def stop(self) -> None:
         self._stopRequested.emit()
 
+    def _trace(self, event: str, playback: _Playback, **fields: object) -> None:
+        if self._diagnostic is not None:
+            try:
+                self._diagnostic(event, **playback.diagnostic_context,
+                                 phrase_id=playback.request_id, **fields)
+            except Exception:
+                logger.exception("Experimental audio observer failed")
+
     @Slot(object)
     def _queue_playback(self, playback: object) -> None:
         if not isinstance(playback, _Playback):
             return
+        self._trace("sink_submitted", playback, queue_depth=self.queue_depth,
+                    expected_ms=playback.expected_seconds * 1000)
         if self._current is not None:
             # Preserve rapid exchanges in order, including identical text from
             # different occurrences. Only explicit bounded overflow drops work.
@@ -210,6 +227,8 @@ class QtNarratorAudioOutput(QObject):
                 if len(self._waiting) >= _MAX_PENDING_UTTERANCES - 1:
                     self._superseded_count += 1
                     logger.warning("Narrator playback event=queue_overflow dropped_request=%d", self._pending.request_id)
+                    self._trace("audio_dropped", self._pending, reason="queue_overflow")
+                    self._notify_terminal(self._pending)
                     self._pending = self._waiting.popleft()
                 self._waiting.append(playback)
                 return
@@ -248,6 +267,9 @@ class QtNarratorAudioOutput(QObject):
                 result="stopped",
                 reason="session or user stop",
             )
+        for waiting in ([self._pending] if self._pending else []) + list(self._waiting):
+            self._trace("audio_dropped", waiting, reason="session_or_user_stop")
+            self._notify_terminal(waiting)
         self._pending = None
         self._waiting.clear()
         self._current = None
@@ -325,6 +347,9 @@ class QtNarratorAudioOutput(QObject):
             playback.text[:120],
         )
         if self._current is playback:
+            self._trace("sink_started", playback,
+                        audio_queue_wait_ms=max(0.0, (playback.started_at - playback.queued_at) * 1000),
+                        expected_ms=playback.expected_seconds * 1000)
             playback.started_callback(
                 max(0.0, (self._clock() - playback.queued_at) * 1000.0)
             )
@@ -473,6 +498,11 @@ class QtNarratorAudioOutput(QObject):
     ) -> None:
         audio = playback.audio
         width = _SAMPLE_WIDTHS.get(audio.sample_format.casefold(), 2)
+        self._trace("sink_terminal", playback, result=result, reason=reason,
+                    processed_ms=processed_seconds * 1000,
+                    expected_ms=playback.expected_seconds * 1000,
+                    elapsed_ms=elapsed_seconds * 1000, terminal_state=terminal_state,
+                    backend_error=backend_error, stop_requested=self._stop_requested)
         # One line per terminal event, carrying everything needed to attribute a
         # perceived interruption to the right cause.
         logger.debug(
@@ -511,14 +541,19 @@ class QtNarratorAudioOutput(QObject):
         # Completion means all PCM played; terminal also includes underrun,
         # backend stop without an error, and explicit cancellation. Balancing
         # must release on all of those without treating them as successful speech.
+        self._notify_terminal(playback)
+
+    @staticmethod
+    def _notify_terminal(playback: _Playback) -> None:
         if playback.terminal_callback is not None:
+            callback, playback.terminal_callback = playback.terminal_callback, None
             try:
-                playback.terminal_callback()
+                callback()
             except Exception:
                 logger.exception("Narrator terminal playback observer failed")
 
-    @staticmethod
-    def _notify_failure(playback: _Playback, message: str) -> None:
+    def _notify_failure(self, playback: _Playback, message: str) -> None:
+        self._trace("sink_failure", playback, message=message)
         try:
             playback.error_callback(message)
         except Exception:

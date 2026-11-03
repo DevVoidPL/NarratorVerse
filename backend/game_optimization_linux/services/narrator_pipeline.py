@@ -122,6 +122,7 @@ class NarratorAudioOutput(Protocol):
         completed_callback: Callable[[], None],
         error_callback: Callable[[str], None],
         text: str = "",
+        terminal_callback: Callable[[], None] | None = None,
     ) -> None: ...
 
     def stop(self) -> None: ...
@@ -794,6 +795,20 @@ def _same_episode_variant(first_text: str, second_text: str) -> bool:
     second_words = _comparison_words(second)
     if min(len(first_words), len(second_words)) < 3:
         return False
+    # OCR can split one m glyph into rn (nam/narn, tam/tarn, numer/nurner).
+    # Retry only inside an already similar multi-word phrase, after the
+    # original speaker/number/negation checks. The retry must still satisfy
+    # the existing word-change guards and similarity thresholds. Never fold
+    # the source text, canonical text or spoken text globally.
+    if (
+        metrics.char_similarity >= 0.84
+        and metrics.common_core_words >= 3
+        and metrics.common_core_ratio >= 0.65
+        and ("rn" in first or "rn" in second)
+        and _same_episode_variant(first.replace("rn", "m"), second.replace("rn", "m"))
+    ):
+        # The folded identities contain no rn, so the retry cannot recurse.
+        return True
     if not _only_ocr_like_changes(first, second):
         return False
     return bool(
@@ -1371,6 +1386,7 @@ class _AcceptedSubtitleTiming:
     ocr_preprocessing_ms: float
     ocr_ms: float
     stabilization_dedup_ms: float
+    recognized_at: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1834,6 +1850,11 @@ class SubtitleTextGate:
             # diagnostics and cooldown correlation across appearances.
             self._accepted_identity = ""
             self._accepted_lines = ()
+
+    def forget_accepted(self, text: str) -> None:
+        """A rejected/dead downstream job must not become a permanent OCR latch."""
+        if _same_episode_variant(text, self._accepted_text):
+            self._clear(no_subtitle=True)
 
     def _reset_candidate(self) -> None:
         self._candidate_text = ""
@@ -2512,9 +2533,15 @@ class _EpisodeVariant:
 
 
 class PhraseDeduplicator:
-    """Speak each subtitle once until a shared, confirmed disappearance."""
+    """One guard for visible episodes, reserved FIFO work and started speech.
+
+    Reservations live until a terminal processing/playback event, not a timer.
+    Only the audio-start callback arms the recent-speech history.
+    """
 
     def __init__(self) -> None:
+        self._spoken_at: dict[str, float] = {}
+        self._reserved: dict[int, str] = {}
         self._visible_phrase = ""
         self._episode_identity = ""
         self._canonical_text = ""
@@ -2576,9 +2603,31 @@ class PhraseDeduplicator:
         if identity == self._visible_phrase:
             self.last_rejection_reason = "visible_duplicate"
             return None
-        # The active occurrence is the latch, not a recent-text timer. A real
-        # disappearance or a different accepted line permits "Siema" again,
-        # even if the previous occurrence was spoken only a moment ago.
+        for reserved_text in self._reserved.values():
+            if self._recent_match(normalized, reserved_text):
+                self.last_rejection_reason = "pending_duplicate"
+                return None
+        # Expire by audio-start time; never postpone TTS or playback.
+        expired = [
+            spoken_identity
+            for spoken_identity, spoken_at in self._spoken_at.items()
+            if now - spoken_at >= cooldown_seconds
+        ]
+        for spoken_identity in expired:
+            self._spoken_at.pop(spoken_identity, None)
+        previous = self._spoken_at.get(identity)
+        if previous is not None:
+            self.last_rejection_reason = "cooldown_exact"
+            return None
+        for spoken_identity in self._spoken_at:
+            if _same_episode_variant(identity, spoken_identity):
+                self.last_rejection_reason = "cooldown_variant"
+                return None
+            if _contained_fragment(identity, spoken_identity):
+                self.last_rejection_reason = "cooldown_fragment"
+                return None
+        # A new episode is admitted only after both pending work and recent
+        # speech have been checked. A visible episode never expires by timer.
         self._visible_phrase = identity
         self._next_episode_id += 1
         self._active_episode_id = self._next_episode_id
@@ -2659,10 +2708,39 @@ class PhraseDeduplicator:
         if len(self._episode_variants) > _EPISODE_MAX_VARIANTS:
             del self._episode_variants[1:len(self._episode_variants) - _EPISODE_MAX_VARIANTS + 1]
 
-    def mark_spoken(self, text: str, *, now: float) -> None:
-        # Compatibility with output callbacks. Playback may start after another
-        # occurrence was accepted; it must not arm a global text cooldown.
-        del text, now
+    @staticmethod
+    def _recent_match(text: str, previous: str) -> bool:
+        return bool(
+            not _speakers_differ(text, previous)
+            and (_same_episode_variant(text, previous)
+                 or _contained_fragment(text, previous))
+        )
+
+    def reserve(self, request_id: int, text: str) -> None:
+        self._reserved[request_id] = text
+
+    def release(self, request_id: int) -> None:
+        """Release unsaid work, including its episode latch so it can retry."""
+        text = self._reserved.pop(request_id, None)
+        if text is not None and self._episode_match(text):
+            self._visible_phrase = ""
+            self._episode_identity = ""
+            self._canonical_text = ""
+            self._episode_variants = []
+            self._active_episode_id = 0
+
+    def clear_pending(self) -> None:
+        for request_id in tuple(self._reserved):
+            self.release(request_id)
+
+    def mark_spoken(self, text: str, *, now: float, request_id: int | None = None) -> None:
+        if request_id is not None:
+            # Do not clear the visible latch on success.
+            self._reserved.pop(request_id, None)
+        identity = subtitle_identity(text)
+        if identity:
+            self._spoken_at[identity] = now
+        return
 
 
 def _region_pixel_rect(
@@ -2967,6 +3045,7 @@ class UnavailableAudioOutput:
         completed_callback: Callable[[], None],
         error_callback: Callable[[str], None],
         text: str = "",
+        terminal_callback: Callable[[], None] | None = None,
     ) -> None:
         del (
             audio,
@@ -2976,6 +3055,7 @@ class UnavailableAudioOutput:
             completed_callback,
             error_callback,
             text,
+            terminal_callback,
         )
         raise RuntimeError("Narrator audio output is unavailable")
 
@@ -3000,7 +3080,11 @@ class NarratorPipeline:
         tts_executor: Executor | None = None,
         ocr_providers: tuple[OcrProvider, ...] = (),
         clock: Callable[[], float] = time.monotonic,
+        diagnostic: Callable[..., None] | None = None,
+        bypass_translation_cache: bool = False,
     ) -> None:
+        self._diagnostic = diagnostic
+        self._bypass_translation_cache = bypass_translation_cache
         self.capture = capture
         self.ocr = ocr
         self.default_ocr_provider_id = ocr.provider_id
@@ -3098,6 +3182,19 @@ class NarratorPipeline:
             NarratorSessionStatus.ERROR,
         }
 
+    def diagnostic_context(self) -> dict[str, object]:
+        with self._lock:
+            return {"session_id": self._session_id, "generation": self._generation}
+
+    def _trace(self, event: str, *, phrase_id: int = 0, **fields: object) -> None:
+        if self._diagnostic is not None:
+            try:
+                context = self.diagnostic_context()
+                context.update(fields)
+                self._diagnostic(event, phrase_id=phrase_id, **context)
+            except Exception:
+                logger.exception("Experimental dialogue observer failed")
+
     def _tts_queue_depth(self) -> int:
         with self._lock:
             return sum(not future.done() for future in self._tts_futures)
@@ -3125,6 +3222,7 @@ class NarratorPipeline:
         duration_ms: float,
         queue_depth: int,
         model: str,
+        generation: int | None = None,
     ) -> None:
         worker_pid = int(getattr(self.tts, "worker_pid", 0) or 0)
         worker_thread = str(
@@ -3136,6 +3234,9 @@ class NarratorPipeline:
         mode = str(
             getattr(self.tts, "worker_onnx_execution_mode", "") or "unknown"
         )
+        self._trace("stage_" + event, session_id=session_id, phrase_id=phrase_id,
+                    duration_ms=duration_ms, queue_depth=queue_depth, model=model,
+                    generation=self._generation if generation is None else generation)
         logger.info(
             "Narrator stage event=%s session=%s phrase_id=%d duration_ms=%.1f "
             "queue_depth=%d pid=%d thread=%s model=%s worker_pid=%d "
@@ -3394,6 +3495,10 @@ class NarratorPipeline:
                 audio_status="ready" if self.audio.available else "unavailable",
             )
             self._emit(NarratorSessionStatus.STARTING)
+            self._trace("session_started", settings=settings.to_dict(),
+                        cooldown_ms=settings.duplicate_cooldown_ms,
+                        translation_provider=self.translator.provider_id,
+                        bypass_translation_cache=self._bypass_translation_cache)
             logger.info(
                 "Narrator session event=started session=%s pid=%d thread=%s",
                 self._session_id,
@@ -3520,8 +3625,12 @@ class NarratorPipeline:
                 self._snapshot.audio_supersessions,
             )
             settings = self._settings
+            self._trace("session_stopped", reason=message,
+                        active_phrase_id=self._work_id if self._narration_busy else None,
+                        pending_dialogue_ids=[item[2] for item in self._narration_queue])
             self._generation += 1
             self._adaptive_rate.reset()
+            self._deduplicator.clear_pending()
             self._narration_queue.clear()
             self._narration_busy = False
             self._request_id += 1
@@ -4087,6 +4196,8 @@ class NarratorPipeline:
             final_decision = observation.decision or "rejected_unknown"
             reason_code = observation.reason_code or rejection_reason or final_decision
             if observation.accepted_text and phrase is None:
+                if self._deduplicator.last_rejection_reason.startswith(('cooldown_', 'pending_')):
+                    self._text_gate.forget_accepted(observation.accepted_text)
                 final_decision = "rejected_duplicate"
                 rejection_reason = "duplicate"
                 reason_code = (
@@ -4099,6 +4210,13 @@ class NarratorPipeline:
             elif phrase:
                 final_decision = "accepted"
                 reason_code = "new_episode_consensus"
+            self._trace("ocr_decision", phrase_id=request_id,
+                        frame_timestamp=frame_timestamp, recognized_at=now,
+                        raw_text=result.raw_text or result.text,
+                        ocr_text=result.text, filtered_text=result.filtered_text,
+                        gate_accepted_text=observation.accepted_text,
+                        accepted_text=phrase, decision=final_decision, reason=reason_code,
+                        episode_id=self._deduplicator.episode_id)
             line_similarity = self._text_gate.last_line_similarity
             char_similarity = (
                 observation.char_similarity
@@ -4353,14 +4471,20 @@ class NarratorPipeline:
                 ocr_preprocessing_ms=result.preprocessing_ms,
                 ocr_ms=result.elapsed_ms,
                 stabilization_dedup_ms=stabilization_dedup_ms,
+                recognized_at=now,
             )
+            self._deduplicator.reserve(request_id, phrase)
             if self._narration_busy:
                 if len(self._narration_queue) >= NARRATION_QUEUE_LIMIT:
                     _, _, dropped_id = self._narration_queue.popleft()
+                    self._release_phrase(dropped_id)
                     self._update_ocr_decision(dropped_id, decision="accepted_queue_overflow")
                     self._funnel["dialogue_queue_overflow"] = self._funnel.get("dialogue_queue_overflow", 0) + 1
                     logger.warning("Narrator dialogue queue overflow dropped_request=%d", dropped_id)
+                    self._trace("dialogue_dropped", phrase_id=dropped_id, reason="queue_overflow")
                 self._narration_queue.append((phrase, timing, request_id))
+                self._trace("dialogue_queued", phrase_id=request_id,
+                            text=phrase, queue_depth=len(self._narration_queue))
                 self._update_ocr_decision(request_id, decision="accepted_queued_narration")
             else:
                 self._narrate_phrase(phrase, timing, request_id)
@@ -4384,6 +4508,10 @@ class NarratorPipeline:
             first_visible_frame_timestamp = timing.first_visible_frame_timestamp
             frame_timestamp = timing.frame_timestamp
             work_id = self._begin_work(request_id)
+            if self._diagnostic is not None:
+                self._trace("dialogue_started", phrase_id=work_id, text=phrase,
+                            text_queue_wait_ms=max(0.0, (self._clock() - timing.accepted_at) * 1000),
+                            queue_depth=len(self._narration_queue))
             self._snapshot = replace(
                 self._snapshot,
                 last_translation="",
@@ -4414,6 +4542,7 @@ class NarratorPipeline:
                 is NarratorSubtitleLanguageMode.POLISH
             ):
                 self._emit(NarratorSessionStatus.LISTENING, detected_text=phrase)
+                self._trace("translation_bypassed", phrase_id=work_id, text=phrase)
                 self._start_tts(
                     phrase,
                     source_text=phrase,
@@ -4434,7 +4563,9 @@ class NarratorPipeline:
                 self._snapshot,
                 translation_status="processing",
             )
-            cached = self.cache.get(
+            self._trace("translation_input", phrase_id=work_id, text=phrase,
+                        provider=self.translator.provider_id, profile=settings.translation_profile_id)
+            cached = None if self._bypass_translation_cache else self.cache.get(
                 phrase,
                 provider_id=self.translator.provider_id,
                 profile_id=settings.translation_profile_id,
@@ -4453,13 +4584,19 @@ class NarratorPipeline:
                     timing=timing,
                 )
                 return
-            translation_future = self._executor.submit(
-                self.translator.translate,
-                phrase,
-                source_language="en",
-                target_language="pl",
-                profile_id=settings.translation_profile_id,
-            )
+            try:
+                translation_future = self._executor.submit(
+                    self.translator.translate,
+                    phrase,
+                    source_language="en",
+                    target_language="pl",
+                    profile_id=settings.translation_profile_id,
+                )
+            except Exception as error:
+                self._release_phrase(work_id)
+                self._recoverable_error(f"Translation submission failed: {error}")
+                self._drain_narration_queue()
+                return
             self._stage_futures.add(translation_future)
             self._stage_kinds[translation_future] = "translation"
             translation_future.add_done_callback(
@@ -4490,6 +4627,7 @@ class NarratorPipeline:
                     generation == self._generation
                     and work_id == self._work_id
                 ):
+                    self._release_phrase(work_id)
                     self._recoverable_error(f"Translation failed: {error}")
                     self._drain_narration_queue()
             return
@@ -4499,12 +4637,13 @@ class NarratorPipeline:
             settings = self._settings
             if settings is None:
                 return
-            self.cache.put(
-                result.source_text,
-                result.translated_text,
-                provider_id=self.translator.provider_id,
-                profile_id=settings.translation_profile_id,
-            )
+            if not self._bypass_translation_cache:
+                self.cache.put(
+                    result.source_text,
+                    result.translated_text,
+                    provider_id=self.translator.provider_id,
+                    profile_id=settings.translation_profile_id,
+                )
             self._translation_finished_value(
                 result,
                 generation=generation,
@@ -4527,8 +4666,12 @@ class NarratorPipeline:
             or work_id != self._work_id
         ):
             return
+        self._trace("translation_output", phrase_id=work_id,
+                    source_text=result.source_text, text=result.translated_text,
+                    provider=result.provider_id, cached=result.cached, elapsed_ms=result.elapsed_ms)
         translated = normalize_subtitle(result.translated_text)
         if not translated:
+            self._release_phrase(work_id)
             self._recoverable_error("Translation returned empty text")
             self._drain_narration_queue()
             return
@@ -4566,12 +4709,15 @@ class NarratorPipeline:
         if speech_text and not settings.read_speaker_names:
             speech_text = strip_speaker_label(speech_text)
         speech_text = strip_stage_directions(speech_text)
+        self._trace("tts_filtered", phrase_id=work_id, input_text=spoken_text,
+                    text=speech_text, bypassed=translation_status == "bypassed")
         logger.debug(
             "Narrator TTS text filter phrase_id=%d removed_characters=%d",
             work_id,
             max(0, len(spoken_text) - len(speech_text)),
         )
         if not speech_text:
+            self._release_phrase(work_id)
             self._update_ocr_decision(
                 work_id, decision="accepted_tts_empty_after_filter"
             )
@@ -4618,17 +4764,24 @@ class NarratorPipeline:
             queue_depth=self._tts_queue_depth() + 1,
             model="unknown",
         )
-        tts_future = self._tts_executor.submit(
-            self._synthesize_timed,
-            speech_text,
-            settings.voice_id,
-            speech_rate,
-            settings.noise_scale,
-            settings.noise_w_scale,
-            self._session_id,
-            work_id,
-            queued_at,
-        )
+        try:
+            tts_future = self._tts_executor.submit(
+                self._synthesize_timed,
+                speech_text,
+                settings.voice_id,
+                speech_rate,
+                settings.noise_scale,
+                settings.noise_w_scale,
+                self._session_id,
+                work_id,
+                queued_at,
+                generation=generation,
+            )
+        except Exception as error:
+            self._release_phrase(work_id)
+            self._recoverable_error(f"Speech synthesis submission failed: {error}")
+            self._drain_narration_queue()
+            return
         self._stage_futures.add(tts_future)
         self._stage_kinds[tts_future] = "tts"
         self._tts_futures.add(tts_future)
@@ -4654,6 +4807,7 @@ class NarratorPipeline:
         session_id: str = "",
         phrase_id: int = 0,
         queued_at: float = 0.0,
+        generation: int | None = None,
     ) -> _TtsStageResult:
         started_at = self._clock()
         self._log_stage(
@@ -4667,6 +4821,7 @@ class NarratorPipeline:
             ),
             queue_depth=max(0, self._tts_queue_depth() - 1),
             model="unknown",
+            generation=generation,
         )
         # Only forward the advanced overrides when the user actually set them,
         # so providers that do not accept them keep working and Piper falls back
@@ -4676,6 +4831,13 @@ class NarratorPipeline:
             advanced["noise_scale"] = noise_scale
         if noise_w_scale is not None:
             advanced["noise_w_scale"] = noise_w_scale
+        # This is the provider boundary, not Piper's phonemizer/segment input.
+        # Capture submission context: a late worker may outlive its session.
+        self._trace("tts_provider_input", phrase_id=phrase_id, text=text, voice_id=voice_id,
+                    session_id=session_id,
+                    generation=self._generation if generation is None else generation,
+                    speech_rate=speech_rate,
+                    tts_queue_wait_ms=max(0.0, (started_at - queued_at) * 1000))
         audio = self.tts.synthesize(
             text,
             language="pl",
@@ -4692,6 +4854,7 @@ class NarratorPipeline:
             duration_ms=audio.worker_startup_ms or 0.0,
             queue_depth=max(0, self._tts_queue_depth() - 1),
             model=model,
+            generation=generation,
         )
         self._log_stage(
             "tts_inference_finished",
@@ -4704,6 +4867,7 @@ class NarratorPipeline:
             ),
             queue_depth=max(0, self._tts_queue_depth() - 1),
             model=model,
+            generation=generation,
         )
         return _TtsStageResult(
             audio=audio,
@@ -4727,6 +4891,10 @@ class NarratorPipeline:
             self._stage_kinds.pop(future, None)
             self._tts_futures.discard(future)
         if future.cancelled():
+            with self._lock:
+                if generation == self._generation and work_id == self._work_id:
+                    self._release_phrase(work_id)
+                    self._drain_narration_queue()
             return
         try:
             stage = future.result()
@@ -4737,6 +4905,7 @@ class NarratorPipeline:
                     and work_id == self._work_id
                 ):
                     self._recoverable_error(f"Speech synthesis failed: {error}")
+                    self._release_phrase(work_id)
                     self._drain_narration_queue()
             return
         with self._lock:
@@ -4821,8 +4990,13 @@ class NarratorPipeline:
                         generation=generation,
                         request_id=work_id,
                     ),
+                    terminal_callback=lambda: self._audio_terminal(
+                        generation=generation, request_id=work_id,
+                    ),
                 )
             except Exception as error:
+                self._release_phrase(work_id)
+                self._trace("playback_submission_failed", phrase_id=work_id, message=str(error))
                 self._recoverable_error(f"Audio playback failed: {error}")
             self._drain_narration_queue()
 
@@ -4846,8 +5020,14 @@ class NarratorPipeline:
             ):
                 return
             self._latest_audio_request_id = request_id
-            self._deduplicator.mark_spoken(source_text, now=self._clock())
+            self._deduplicator.mark_spoken(source_text, now=self._clock(), request_id=request_id)
             now = self._clock()
+            self._trace("playback_started", phrase_id=request_id,
+                        source_text=source_text, audio_queue_wait_ms=elapsed_ms,
+                        accepted_to_speech_ms=max(0.0, (now - timing.accepted_at) * 1000),
+                        recognized_to_speech_ms=(max(0.0, (now - timing.recognized_at) * 1000)
+                                                 if timing.recognized_at is not None else None),
+                        frame_to_speech_ms=max(0.0, (now - timing.frame_timestamp) * 1000))
             self._snapshot = replace(
                 self._snapshot,
                 last_spoken_text=translated,
@@ -4927,6 +5107,7 @@ class NarratorPipeline:
                 return
             now = self._clock()
             playback_started = self._snapshot.playback_started_at_monotonic
+            self._trace("playback_completed", phrase_id=request_id)
             self._snapshot = replace(self._snapshot, audio_status="ready")
             self._funnel["played_to_completion"] = (
                 self._funnel.get("played_to_completion", 0) + 1
@@ -4957,7 +5138,20 @@ class NarratorPipeline:
             ):
                 return
             self._snapshot = replace(self._snapshot, audio_status="error")
+            self._release_phrase(request_id)
+            self._trace("playback_failed", phrase_id=request_id, message=message)
             self._recoverable_error(message)
+
+    def _audio_terminal(self, *, generation: int, request_id: int) -> None:
+        with self._lock:
+            if generation == self._generation and request_id >= self._audio_request_floor:
+                self._release_phrase(request_id)
+
+    def _release_phrase(self, request_id: int) -> None:
+        text = self._deduplicator._reserved.get(request_id)
+        if text is not None:
+            self._text_gate.forget_accepted(text)
+        self._deduplicator.release(request_id)
 
     def _begin_work(self, accepted_request_id: int) -> int:
         """Activate the next serialized job; lifecycle changes invalidate results."""
@@ -5143,6 +5337,7 @@ class NarratorPipeline:
         )
 
     def _recoverable_error(self, message: str) -> None:
+        self._trace("recoverable_error", phrase_id=self._work_id, message=message)
         logger.warning(
             "Narrator recoverable failure session=%s game=%s: %s",
             self._session_id,
@@ -5160,7 +5355,11 @@ class NarratorPipeline:
         self._emit(NarratorSessionStatus.LISTENING, message=message)
 
     def _fail(self, message: str) -> None:
+        self._trace("session_failed", message=message,
+                    active_phrase_id=self._work_id if self._narration_busy else None,
+                    pending_dialogue_ids=[item[2] for item in self._narration_queue])
         self._adaptive_rate.reset()
+        self._deduplicator.clear_pending()
         self._narration_queue.clear()
         self._narration_busy = False
         self._generation += 1
