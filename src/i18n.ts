@@ -10,7 +10,7 @@ export const labels:Record<string,string> = {
  recognition:'Rozpoznawanie i tłumaczenie',translation:'Tłumaczenie',text:'Rozpoznany tekst',
  mode:'Przygotowanie obrazu Tesseract',automatic:'Automatyczne',classic:'Klasyczne',
  sampling:'Próbkowanie (Hz)',stabilization:'Stabilizacja (ms)',confidence:'Minimalna pewność OCR',
- cooldown:'Tłumienie duplikatów (ms)',threshold:'Próg zmiany obrazu',
+ cooldown:'Historia od początku audio (ms)',threshold:'Próg zmiany obrazu',
  translationProfile:'Sposób tłumaczenia',balanced:'Zrównoważony',fast:'Szybki',
  noise:'Zmienność głosu (noise scale)',noiseW:'Zmienność długości (noise W)',
  sectionReset:'Przywrócić domyślne ustawienia tej sekcji? Zmiana zapisze się od razu. Modele i głosy pozostaną bez zmian.',

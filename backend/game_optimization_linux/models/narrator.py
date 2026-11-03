@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from narratorverse.quickmt_model import QUICKMT_PROVIDER_ID
+
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -163,7 +165,7 @@ class NarratorGameSettings:
     )
     subtitle_adapter_id: str = ""
     ocr_provider_id: str = ""
-    translation_provider_id: str = ""
+    translation_provider_id: str = QUICKMT_PROVIDER_ID
     translation_profile_id: str = ""
     tts_provider_id: str = ""
     voice_id: str = ""
@@ -333,7 +335,7 @@ class NarratorGameSettings:
             subtitle_adapter_id=str(values.get("subtitle_adapter_id", "")),
             ocr_provider_id=str(values.get("ocr_provider_id", "")),
             translation_provider_id=str(
-                values.get("translation_provider_id", "")
+                values.get("translation_provider_id", QUICKMT_PROVIDER_ID)
             ),
             translation_profile_id=str(values.get("translation_profile_id", "")),
             tts_provider_id=str(values.get("tts_provider_id", "")),

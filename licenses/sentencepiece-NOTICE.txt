@@ -1,0 +1,12 @@
+SentencePiece 0.2.1
+Upstream: https://github.com/google/sentencepiece/tree/v0.2.1
+Author listed by the Python distribution: Taku Kudo <taku@google.com>
+Copyright 2016 Google Inc. All Rights Reserved.
+License: Apache-2.0; see sentencepiece-LICENSE.txt.
+
+The experimental Flatpak includes the unmodified CPython 3.13 / Linux x86_64
+wheel payload, with its original Python source headers and dist-info metadata.
+The pinned wheel URL and SHA-256 are in scripts/quickmt-runtime-requirements.txt.
+No QuickMT model weights are included. The separately downloaded QuickMT model
+has its own CC BY 4.0 license, original README and attribution in the user model
+directory. This notice is maintained by NarratorVerse, not an upstream NOTICE.

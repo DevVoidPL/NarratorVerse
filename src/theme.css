@@ -1,3 +1,4 @@
+/* Wspolne kolory i kontrolki interfejsu. */
 :root{--bg:#0b1017;--sidebar:#0f151e;--surface:#161f2b;--field:#101823;--border:#2b384a;--text:#edf4fd;--muted:#9baec5;--accent:#5ce1b7;--accent-soft:#173c36;--danger:#ff7c8e;color:var(--text);background:var(--bg);font-family:Inter,"Noto Sans",system-ui,sans-serif}
 body{background:var(--bg)}
 button{display:inline-flex;align-items:center;justify-content:center;gap:8px;vertical-align:middle;background:#1c2735;border-color:var(--border);color:var(--text);border-radius:8px;min-height:38px;line-height:1.35;font-weight:550;transition:background .15s,border-color .15s}

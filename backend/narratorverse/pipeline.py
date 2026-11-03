@@ -1,3 +1,4 @@
+"""Standalone lifecycle controls; inference and recognition remain upstream."""
 from dataclasses import replace
 from game_optimization_linux.services.narrator_pipeline import NarratorPipeline, SubtitleTextGate
 
@@ -6,7 +7,11 @@ class StandalonePipeline(NarratorPipeline):
     def pause_processing(self):
         """Discard pending work without closing the user's portal session."""
         with self._lock:
+            self._trace('session_paused',
+                        active_phrase_id=self._work_id if self._narration_busy else None,
+                        pending_dialogue_ids=[item[2] for item in self._narration_queue])
             self._adaptive_rate.reset()
+            self._deduplicator.clear_pending()
             self._narration_queue.clear()
             self._narration_busy = False
             self._last_text_frame_digest = None

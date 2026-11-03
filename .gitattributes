@@ -1,0 +1,2 @@
+# Raw Tesseract TSV: the final tab represents a required empty text column.
+tests/fixtures/ocr-corpus/*.tsv whitespace=-blank-at-eol

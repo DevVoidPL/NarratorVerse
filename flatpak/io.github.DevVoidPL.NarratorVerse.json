@@ -5,28 +5,85 @@
   "sdk": "org.gnome.Sdk",
   "command": "narratorverse",
   "finish-args": [
-    "--share=ipc", "--share=network", "--socket=wayland",
-    "--socket=fallback-x11", "--socket=pulseaudio", "--device=dri"
+    "--share=ipc",
+    "--share=network",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--socket=pulseaudio",
+    "--device=dri"
   ],
   "modules": [
     {
       "name": "narratorverse-local-snapshot",
       "buildsystem": "simple",
-      "build-commands": ["python3 scripts/stage-flatpak.py --dest /app"],
+      "build-commands": [
+        "python3 scripts/stage-flatpak.py --dest /app"
+      ],
       "sources": [
-        {"type": "file", "path": "../scripts/stage-flatpak.py", "dest": "scripts"},
-        {"type": "file", "path": "../src-tauri/target/release/narratorverse", "dest": "src-tauri/target/release"},
-        {"type": "file", "path": "../LICENSE"},
-        {"type": "dir", "path": "../backend", "dest": "backend"},
-        {"type": "dir", "path": "../bin", "dest": "bin"},
-        {"type": "dir", "path": "../licenses", "dest": "licenses"},
-        {"type": "dir", "path": "../data", "dest": "data"},
-        {"type": "dir", "path": "../.runtime", "dest": ".runtime"},
-        {"type": "dir", "path": "../components/ocr.english-local", "dest": "components/ocr.english-local"},
-        {"type": "dir", "path": "../components/ocr.polish-local", "dest": "components/ocr.polish-local"},
-        {"type": "dir", "path": "../components/ocr.rapidocr-local", "dest": "components/ocr.rapidocr-local"},
-        {"type": "dir", "path": "../components/translation.opus-en-pl", "dest": "components/translation.opus-en-pl"},
-        {"type": "dir", "path": "../components/tts.voidek", "dest": "components/tts.voidek"}
+        {
+          "type": "file",
+          "path": "../scripts/stage-flatpak.py",
+          "dest": "scripts"
+        },
+        {
+          "type": "file",
+          "path": "../src-tauri/target/release/narratorverse",
+          "dest": "src-tauri/target/release"
+        },
+        {
+          "type": "file",
+          "path": "../LICENSE"
+        },
+        {
+          "type": "dir",
+          "path": "../backend",
+          "dest": "backend"
+        },
+        {
+          "type": "dir",
+          "path": "../bin",
+          "dest": "bin"
+        },
+        {
+          "type": "dir",
+          "path": "../licenses",
+          "dest": "licenses"
+        },
+        {
+          "type": "dir",
+          "path": "../data",
+          "dest": "data"
+        },
+        {
+          "type": "dir",
+          "path": "../.runtime",
+          "dest": ".runtime"
+        },
+        {
+          "type": "dir",
+          "path": "../components/ocr.english-local",
+          "dest": "components/ocr.english-local"
+        },
+        {
+          "type": "dir",
+          "path": "../components/ocr.polish-local",
+          "dest": "components/ocr.polish-local"
+        },
+        {
+          "type": "dir",
+          "path": "../components/ocr.rapidocr-local",
+          "dest": "components/ocr.rapidocr-local"
+        },
+        {
+          "type": "dir",
+          "path": "../components/tts.voidek",
+          "dest": "components/tts.voidek"
+        },
+        {
+          "type": "dir",
+          "path": "../.tools/quickmt-python",
+          "dest": ".tools/quickmt-python"
+        }
       ]
     }
   ]

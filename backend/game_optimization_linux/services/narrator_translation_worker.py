@@ -10,30 +10,6 @@ import time
 from typing import Any
 
 
-class _BpeTokenizer:
-    def __init__(self, model_file: str) -> None:
-        from sacremoses.normalize import MosesPunctNormalizer
-        from sacremoses.tokenize import MosesDetokenizer, MosesTokenizer
-        from subword_nmt.apply_bpe import BPE
-
-        self._normalizer = MosesPunctNormalizer("en")
-        self._tokenizer = MosesTokenizer("en")
-        self._detokenizer = MosesDetokenizer("pl")
-        with Path(model_file).open("r", encoding="utf-8") as codes:
-            self._bpe = BPE(codes)
-
-    def encode(self, text: str, *, out_type: type[str]) -> list[str]:
-        if out_type is not str:
-            raise TypeError("The BPE tokenizer returns string tokens")
-        normalized = self._normalizer.normalize(text)
-        tokens = self._tokenizer.tokenize(normalized)
-        return self._bpe.segment_tokens(tokens)
-
-    def decode(self, tokens: list[str]) -> str:
-        words = " ".join(tokens).replace("@@ ", "").split(" ")
-        return self._detokenizer.detokenize(words)
-
-
 class _TranslationEngine:
     def __init__(
         self,
@@ -48,7 +24,8 @@ class _TranslationEngine:
             import ctranslate2
 
             translator_factory = ctranslate2.Translator
-        tokenizer_factory = tokenizer_factory or _BpeTokenizer
+        if tokenizer_factory is None:
+            raise ValueError("A local model tokenizer is required")
         self._tokenizer = tokenizer_factory(model_file=str(tokenizer_path))
         self._translator = translator_factory(
             str(model_dir),
@@ -95,10 +72,10 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, engine_factory: Any = _TranslationEngine) -> int:
     arguments = _arguments(argv)
     try:
-        engine = _TranslationEngine(
+        engine = engine_factory(
             arguments.model_dir,
             arguments.tokenizer,
             arguments.target_prefix,

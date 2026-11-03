@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble a local runtime snapshot without profiles or custom voices."""
+"""Assemble a local snapshot with owner-authorized Voidek, never user data."""
 import argparse
 import hashlib
 import importlib.metadata
@@ -9,20 +9,34 @@ import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_ID = 'io.github.DevVoidPL.NarratorVerse'
-COMPONENTS = ('ocr.english-local', 'ocr.polish-local', 'ocr.rapidocr-local', 'translation.opus-en-pl', 'tts.voidek')
+COMPONENTS = ('ocr.english-local', 'ocr.polish-local', 'ocr.rapidocr-local', 'tts.voidek')
 
 
 def copy_tree(source, destination):
     if not source.is_dir(): raise RuntimeError(f'Missing input directory: {source}')
     for path in source.rglob('*'):
         if path.is_symlink(): raise RuntimeError(f'Symlink not allowed in snapshot: {path}')
-        relative = path.relative_to(source)
-        if '.pytest_cache' in relative.parts: continue
-        if source in (ROOT / 'backend', ROOT / 'bin', ROOT / 'licenses') and any(
-            part.startswith('.') for part in relative.parts
-        ):
-            raise RuntimeError(f'Hidden file not allowed in application sources: {path}')
     shutil.copytree(source, destination, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.pytest_cache'))
+
+
+def stage_quickmt_runtime(destination):
+    source = ROOT / '.tools/quickmt-python'
+    metadata = source / 'sentencepiece-0.2.1.dist-info'
+    license_file = ROOT / 'licenses/sentencepiece-LICENSE.txt'
+    if not (metadata / 'METADATA').is_file() or not (source / 'sentencepiece').is_dir():
+        raise RuntimeError('Missing SentencePiece; run scripts/prepare-quickmt-runtime.sh first')
+    if not license_file.is_file() or license_file.is_symlink():
+        raise RuntimeError('Missing SentencePiece license: licenses/sentencepiece-LICENSE.txt')
+    details = importlib.metadata.PathDistribution(metadata)
+    if details.metadata['Name'] != 'sentencepiece' or details.version != '0.2.1':
+        raise RuntimeError('Expected pinned SentencePiece 0.2.1')
+    if not (source / 'sentencepiece/_sentencepiece.cpython-313-x86_64-linux-gnu.so').is_file():
+        raise RuntimeError('Missing CPython 3.13 / x86_64 SentencePiece native extension')
+    for name in ('sentencepiece', 'sentencepiece-0.2.1.dist-info'):
+        if (destination / name).exists():
+            raise RuntimeError(f'Refusing to overwrite existing runtime package: {name}')
+    for name in ('sentencepiece', 'sentencepiece-0.2.1.dist-info'):
+        copy_tree(source / name, destination / name)
 
 
 def stage(destination):
@@ -33,9 +47,11 @@ def stage(destination):
     app.mkdir(parents=True)
     copy_tree(ROOT / 'backend', app / 'backend')
     copy_tree(ROOT / 'bin', app / 'bin')
+    # .runtime/python is an obsolete duplicate; Python imports from lib only.
     for name in ('lib', 'lib64', 'bin', 'share', 'libexec'):
         source = ROOT / '.runtime' / name
         if source.exists(): copy_tree(source, app / '.runtime' / name)
+    stage_quickmt_runtime(app / '.runtime/lib/python3.13/site-packages')
     for component in COMPONENTS:
         copy_tree(ROOT / 'components' / component, app / 'components' / component)
     copy_tree(ROOT / 'licenses', app / 'licenses')
@@ -66,11 +82,13 @@ def stage(destination):
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             inventory[str(path.relative_to(destination))] = {'bytes': path.stat().st_size, 'sha256': digest}
     (app / 'licenses/snapshot-files.json').write_text(json.dumps(inventory, indent=2))
-    forbidden = ('tts.custom-voices', 'profiles.json', 'quick-read.json', 'capture-grants.json', 'audio-balance-recovery.json', 'translation-cache.sqlite3')
+    forbidden = ('tts.custom-voices', '.private', 'reference', 'profiles.json', 'quick-read.json',
+                 'audio-balance-recovery.json', 'capture-grants.json', 'translation.opus-en-pl',
+                 'translation-cache.sqlite3', 'quickmt-en-pl', 'src.spm.model', 'tgt.spm.model')
     for path in destination.rglob('*'):
         if any(part in forbidden for part in path.relative_to(destination).parts):
             raise RuntimeError(f'Forbidden package input: {path}')
-    print(f'Staged {len(inventory)} files; Voidek included; profiles and custom voices excluded.')
+    print(f'Staged {len(inventory)} files; owner-authorized Voidek included; user data and custom voices excluded.')
 
 
 if __name__ == '__main__':

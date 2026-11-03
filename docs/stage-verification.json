@@ -1,0 +1,21 @@
+{
+  "inventoried": 7372,
+  "errors": [],
+  "extra": [],
+  "pyc": [],
+  "forbidden": [],
+  "qt_libraries": [
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6Charts.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6ChartsQml.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6DataVisualization.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6DataVisualizationQml.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6VirtualKeyboard.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6VirtualKeyboardQml.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6VirtualKeyboardSettings.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6WebEngineCore.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6WebEngineQuick.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6WebEngineQuickDelegatesQml.so.6",
+    "share/narratorverse/.runtime/lib/python3.13/site-packages/PySide6/Qt/lib/libQt6WebEngineWidgets.so.6"
+  ],
+  "license_notice_count": 76
+}
