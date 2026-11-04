@@ -80,6 +80,10 @@ class FreshBuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as work:
             source = Path(work) / 'source'
             source.mkdir()
+            for name in helper.policy(ROOT)['build']:
+                path = source / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('test')
             for path in ['src/App.svelte', 'src-tauri/src/main.rs', 'svelte.config.js',
                          'src-tauri/target/old', '.runtime/old', 'components/old',
                          'backend/__pycache__/bad.pyc']:

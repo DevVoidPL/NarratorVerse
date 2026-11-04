@@ -1,41 +1,56 @@
 #!/usr/bin/env python3
-"""Install only freshly built outputs, preserving wheel/model license files."""
-import json
+"""Install only reviewed project files and SHA-256 pinned model files."""
 from pathlib import Path
+import re
 import shutil
-import subprocess
+import sys
 
-root = Path.cwd()
-app = Path('/app/share/narratorverse')
-app.mkdir(parents=True, exist_ok=False)
-for name in ('backend', 'bin', 'licenses'):
-    shutil.copytree(root / name, app / name,
-                    ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
-shutil.copytree(root / 'components', app / 'components')
-shutil.copy2(root / 'LICENSE', app / 'LICENSE')
-subprocess.run(['install', '-Dm755', 'src-tauri/target/release/narratorverse',
-                '/app/bin/narratorverse'], check=True)
-app_id = 'io.github.DevVoidPL.NarratorVerse'
-for source, target in [
-    (f'data/{app_id}.desktop', f'/app/share/applications/{app_id}.desktop'),
-    (f'data/{app_id}.metainfo.xml', f'/app/share/metainfo/{app_id}.metainfo.xml'),
-]:
-    subprocess.run(['install', '-Dm644', source, target], check=True)
-for size in (16, 24, 32, 48, 64, 128, 256, 512):
-    subprocess.run(['install', '-Dm644', f'data/icons/{size}x{size}.png',
-        f'/app/share/icons/hicolor/{size}x{size}/apps/{app_id}.png'], check=True)
-for name in ('python-lock.json', 'components-lock.json', 'build-tools-lock.json', 'sdk-lock.json'):
-    shutil.copy2(root / 'build-locks' / name, app / 'licenses' / name)
-# Preserve source-lock provenance and available dependency notice texts, including
-# frontend code embedded into the Rust executable. Missing notices remain visible
-# in payload inventory/review; metadata is never substituted for license texts.
-third_party = app / 'licenses/third-party'
-for kind, base in [('cargo', root / 'vendor'), ('npm', root / 'node_modules')]:
-    for source in base.rglob('*'):
-        if source.is_file() and not source.is_symlink() and any(
-                word in source.name.lower() for word in ('license', 'notice', 'copying', 'copyright')):
-            target = third_party / kind / source.relative_to(base)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-shutil.copy2(root / 'src-tauri/Cargo.lock', app / 'licenses/Cargo.lock')
-shutil.copy2(root / 'package-lock.json', app / 'licenses/package-lock.json')
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from packaging_policy import copy_files, policy, safe_file, validate, validate_components
+
+
+def install(root, prefix):
+    rules = policy(root)
+    validate(root, rules['build'], rules['source_roots'],
+             rules['excluded_source'] + ['src-tauri/.cargo/config.toml'])
+    validate_components(root, rules['components'])
+    binary = safe_file(root, 'src-tauri/target/release/narratorverse')
+    locks = ['python-lock.json', 'components-lock.json', 'build-tools-lock.json', 'sdk-lock.json']
+    for name in locks:
+        safe_file(root, 'build-locks/' + name)
+    notices = []
+    for kind, base in [('cargo', root / 'vendor'), ('npm', root / 'node_modules')]:
+        if not base.is_dir() or base.is_symlink():
+            raise ValueError('Missing dependency input: ' + kind)
+        for source in sorted(base.rglob('*')):
+            if re.fullmatch(r'(?:licen[cs]e|notice|copying|copyright)(?:[-.][A-Za-z0-9_.-]+)?',
+                            source.name, re.IGNORECASE) and source.is_file():
+                safe_file(base, source.relative_to(base).as_posix())
+                notices.append((source, kind, source.relative_to(base)))
+    app = prefix / 'share/narratorverse'
+    if app.exists() or app.is_symlink():
+        raise ValueError('Refusing to overwrite application payload')
+    app.mkdir(parents=True)
+    copy_files(root, app, rules['app'])
+    copy_files(root, app, rules['components'])
+    target = prefix / 'bin/narratorverse'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(binary, target)
+    target.chmod(0o755)
+    for source, relative in rules['desktop'].items():
+        target = prefix / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(safe_file(root, source), target)
+    for name in locks:
+        shutil.copy2(root / 'build-locks' / name, app / 'licenses' / name)
+    for source, kind, relative in notices:
+        target = app / 'licenses/third-party' / kind / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+    for source, name in [('src-tauri/Cargo.lock', 'Cargo.lock'), ('package-lock.json', 'package-lock.json'),
+                         ('flatpak/publication-files.json', 'publication-files.json')]:
+        shutil.copy2(root / source, app / 'licenses' / name)
+
+
+if __name__ == '__main__':
+    install(Path.cwd(), Path('/app'))

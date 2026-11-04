@@ -68,3 +68,21 @@ audio-balance-recovery.json
 /diagnostics/
 /logs/
 /narratorverse-p0-arch.*/
+# Local historical publication evidence (originals preserved on disk).
+/docs/integration-import.md
+/docs/stage-verification.json
+/docs/bundle-verification.json
+/docs/SOURCE_PUBLICATION_0.2.0-beta.1.md
+# Scoped variants of private working directories, not public regression fixtures.
+/.private-*/
+/reference-*/
+/.runtime-*/
+/.tools-*/
+/audit-*/
+/audits-*/
+/diagnostics-*/
+/logs-*/
+/staging-*/
+/cache-*/
+/profiles-*/
+/user-data-*/

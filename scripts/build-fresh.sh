@@ -73,6 +73,9 @@ def expand(v):
 PY
 "$BUILDER" --user --state-dir="$WORK/builder-state" --download-only "$WORK/build" "$WORK/manifest.json" > "$WORK/download.log" 2>&1
 "$BUILDER" --user --state-dir="$WORK/builder-state" --disable-download "$WORK/build" "$WORK/manifest.json" > "$WORK/build.log" 2>&1
+# Builder embeds the expanded host manifest after install; normalize before any
+# inventory/export while retaining the original privately in the work directory.
+python3 "$ROOT/scripts/packaging_policy.py" "$WORK/build/files/manifest.json" "$WORK"
 flatpak build --runtime --unshare=network --filesystem="$ROOT/scripts:ro" "$WORK/build" \
   sh -c 'export QT_QPA_PLATFORM=offscreen PYTHONDONTWRITEBYTECODE=1; exec python3 "$1/validate-fresh.py"' \
   validate "$ROOT/scripts" > "$WORK/validation.log" 2>&1

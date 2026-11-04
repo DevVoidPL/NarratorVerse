@@ -19,7 +19,8 @@ Klon nie korzysta z hardlinkow obiektow ani shared object store.
 
 Oba oryginalne katalogi pozostaly nietkniete. Koncowo sprawdzono hashe
 99 importowanych plikow deweloperskich oraz czyste Git status publicznej
-kopii. Lista importu i pierwotne hashe: `docs/integration-import.md`.
+kopii. Szczegółowa lista importu i pierwotne hashe są wewnętrzną ewidencją
+zachowaną lokalnie, poza publikowanym drzewem źródeł.
 Trzy publiczne screenshoty pozostaly. Ignore rules obejmuja modele,
 runtime, narzedzia, dane prywatne i buildy; `.gitignore` jest sledzony.
 

@@ -10,11 +10,12 @@ import tempfile
 import urllib.error
 import urllib.request
 import zipfile
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from packaging_policy import copy_files, policy, validate
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIRS = ('src', 'src-tauri', 'backend', 'bin', 'data', 'licenses', 'scripts', 'tests')
-SOURCE_FILES = ('package.json', 'package-lock.json', 'tsconfig.json', 'vite.config.ts', 'svelte.config.js',
-                'index.html', 'LICENSE', 'README.md')
 
 
 def digest(path):
@@ -79,18 +80,10 @@ def component_manifest(directory, metadata):
 def source_snapshot(source, destination):
     if destination.exists():
         raise ValueError('Refusing to replace source snapshot')
+    rules = policy(ROOT)
+    validate(source, rules['build'], rules['source_roots'], rules['excluded_source'])
     destination.mkdir(parents=True)
-    ignore = shutil.ignore_patterns('target', '__pycache__', '*.pyc', '.pytest_cache', 'node_modules')
-    for name in SOURCE_DIRS:
-        path = source / name
-        if path.exists():
-            if any(p.is_symlink() for p in path.rglob('*')):
-                raise ValueError('Symlink in source input: ' + name)
-            shutil.copytree(path, destination / name, ignore=ignore)
-    for name in SOURCE_FILES:
-        path = source / name
-        if path.is_file():
-            shutil.copy2(path, destination / name)
+    copy_files(source, destination, rules['build'])
 
 
 def prepare(work, voidek, wheel_cache=None):

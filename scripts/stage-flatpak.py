@@ -92,7 +92,5 @@ def stage(destination):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dest', required=True, type=Path)
-    args = parser.parse_args()
-    stage(args.dest.resolve())
+    raise SystemExit('Legacy snapshot staging is disabled. Use scripts/build-fresh.sh; '
+                     'local runtimes are not approved package inputs.')
