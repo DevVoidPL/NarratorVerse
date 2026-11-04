@@ -3,7 +3,18 @@
   "runtime": "org.gnome.Platform",
   "runtime-version": "49",
   "sdk": "org.gnome.Sdk",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ],
   "command": "narratorverse",
+  "build-options": {
+    "append-path": "/usr/lib/sdk/rust-stable/bin",
+    "env": {
+      "CARGO_HOME": "/run/build/narratorverse/cargo-home",
+      "CARGO_NET_OFFLINE": "true",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    }
+  },
   "finish-args": [
     "--share=ipc",
     "--share=network",
@@ -14,75 +25,101 @@
   ],
   "modules": [
     {
-      "name": "narratorverse-local-snapshot",
-      "buildsystem": "simple",
-      "build-commands": [
-        "python3 scripts/stage-flatpak.py --dest /app"
+      "name": "leptonica",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DBUILD_SHARED_LIBS=ON"
       ],
       "sources": [
         {
+          "type": "archive",
+          "url": "https://github.com/DanBloomberg/leptonica/releases/download/1.87.0/leptonica-1.87.0.tar.gz",
+          "sha256": "c73363397f96eb1295602bf44d708a994ad42046c791bf03ea0505d829bdb6a7"
+        }
+      ],
+      "builddir": true,
+      "post-install": [
+        "install -Dm644 ../leptonica-license.txt /app/share/narratorverse-native-licenses/leptonica/LICENSE"
+      ]
+    },
+    {
+      "name": "tesseract",
+      "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DBUILD_SHARED_LIBS=ON",
+        "-DBUILD_TRAINING_TOOLS=OFF",
+        "-DBUILD_TESTS=OFF",
+        "-DDISABLE_CURL=ON",
+        "-DDISABLE_ARCHIVE=ON"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.4.tar.gz",
+          "sha256": "a8dbf8b8c8ee427ff6ad1d99116502feaf59440af1adb893caf60a6576826cf4"
+        }
+      ],
+      "builddir": true,
+      "post-install": [
+        "install -Dm644 ../LICENSE /app/share/narratorverse-native-licenses/tesseract/LICENSE"
+      ]
+    },
+    {
+      "name": "narratorverse",
+      "buildsystem": "simple",
+      "build-commands": [
+        "python3 -m pip install --ignore-installed --isolated --no-index --no-deps --no-compile --only-binary=:all: --require-hashes --find-links=wheelhouse --prefix=/app -r python-requirements.lock",
+        "PATH=\"$PWD/node/bin:$PATH\" npm ci --offline --cache npm-cache --no-audit --no-fund",
+        "PATH=\"$PWD/node/bin:$PATH\" npm run check",
+        "PATH=\"$PWD/node/bin:$PATH\" npm run test:ui",
+        "PATH=\"$PWD/node/bin:$PATH\" npm run build",
+        "cd src-tauri && cargo build --release --frozen",
+        "python3 scripts/install-fresh.py"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "@WORK@/source"
+        },
+        {
+          "type": "dir",
+          "path": "@WORK@/wheelhouse",
+          "dest": "wheelhouse"
+        },
+        {
           "type": "file",
-          "path": "../scripts/stage-flatpak.py",
-          "dest": "scripts"
-        },
-        {
-          "type": "file",
-          "path": "../src-tauri/target/release/narratorverse",
-          "dest": "src-tauri/target/release"
-        },
-        {
-          "type": "file",
-          "path": "../LICENSE"
+          "path": "@WORK@/python-requirements.lock"
         },
         {
           "type": "dir",
-          "path": "../backend",
-          "dest": "backend"
+          "path": "@WORK@/components",
+          "dest": "components"
         },
         {
           "type": "dir",
-          "path": "../bin",
-          "dest": "bin"
+          "path": "@WORK@/npm-cache",
+          "dest": "npm-cache"
         },
         {
           "type": "dir",
-          "path": "../licenses",
-          "dest": "licenses"
+          "path": "@WORK@/vendor",
+          "dest": "vendor"
         },
         {
           "type": "dir",
-          "path": "../data",
-          "dest": "data"
+          "path": "@WORK@/cargo-config",
+          "dest": "src-tauri/.cargo"
         },
         {
           "type": "dir",
-          "path": "../.runtime",
-          "dest": ".runtime"
+          "path": "@WORK@/build-locks",
+          "dest": "build-locks"
         },
         {
-          "type": "dir",
-          "path": "../components/ocr.english-local",
-          "dest": "components/ocr.english-local"
-        },
-        {
-          "type": "dir",
-          "path": "../components/ocr.polish-local",
-          "dest": "components/ocr.polish-local"
-        },
-        {
-          "type": "dir",
-          "path": "../components/ocr.rapidocr-local",
-          "dest": "components/ocr.rapidocr-local"
-        },
-        {
-          "type": "dir",
-          "path": "../components/tts.voidek",
-          "dest": "components/tts.voidek"
-        },
-        {
-          "type": "dir",
-          "path": "../.tools/quickmt-python",
-          "dest": ".tools/quickmt-python"
+          "type": "archive",
+          "url": "https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz",
+          "sha256": "9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37",
+          "dest": "node"
         }
       ]
     }

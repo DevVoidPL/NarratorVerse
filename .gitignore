@@ -23,6 +23,7 @@ coverage/
 /flatpak/build-backup.*/
 /flatpak/build.backup-*/
 /flatpak/build-*/
+/flatpak/fresh-work-*/
 /flatpak/repo/
 /flatpak/artifacts/
 /.flatpak-builder/
@@ -60,3 +61,10 @@ audio-balance-recovery.json
 /cache/
 /profiles/
 /user-data/
+# Local acceptance evidence can contain dialogue, captures and user identifiers.
+# Keep exclusions scoped: JSONL/WAV fixtures under tests remain eligible for Git.
+/audit/
+/audits/
+/diagnostics/
+/logs/
+/narratorverse-p0-arch.*/

@@ -55,7 +55,7 @@ def test_beta_blocks_variant_and_contained_fragment():
         assert dedup.last_rejection_reason == expected
 
 
-def test_trace_is_private_jsonl_with_full_text_and_clock(tmp_path):
+def test_trace_is_private_jsonl_with_text_hash_and_clock(tmp_path):
     path = tmp_path / 'run.jsonl'
     trace = DialogueTrace(path, run_id='gta-A', clock=lambda: 12.5)
     trace.emit('ocr', session_id='s', generation=2, phrase_id=7,
@@ -65,7 +65,10 @@ def test_trace_is_private_jsonl_with_full_text_and_clock(tmp_path):
     assert event['monotonic'] == 12.5
     assert event['run_id'] == 'gta-A'
     assert event['phrase_id'] == 7
-    assert event['raw_text'] == 'Długi tekst\nz polskimi znakami: ąę'
+    import hashlib
+    assert event['raw_text_sha256'] == hashlib.sha256(
+        'Długi tekst\nz polskimi znakami: ąę'.encode()).hexdigest()
+    assert 'raw_text' not in event
     assert path.stat().st_mode & 0o777 == 0o600
     # Do not overwrite, mix runs or follow a symlink by accident.
     with pytest.raises(FileExistsError):

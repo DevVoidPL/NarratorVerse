@@ -32,6 +32,7 @@ def test_reservation_blocks_pending_return_without_starting_history():
     assert not d._spoken_at
     d.mark_spoken(A, now=100, request_id=7)
     assert not d._reserved
+    d.release(7)  # terminal audio event, not merely start
     assert accept(d, A, 104.499) is None
     assert accept(d, A, 104.5) == A
 

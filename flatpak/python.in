@@ -1,0 +1,9 @@
+# Direct runtime roots, CPython 3.13 / Linux x86_64. Not an install lock.
+# Version choices retain tested application APIs; artifacts are obtained from PyPI.
+PySide6==6.11.1
+dbus-next==0.2.3
+rapidocr==3.10.0
+onnxruntime==1.28.0
+ctranslate2==4.8.1
+piper-tts==1.7.0
+sentencepiece==0.2.1

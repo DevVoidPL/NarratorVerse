@@ -13,7 +13,7 @@ class ContractReplay:
 
     def __init__(self, tmp_path: Path) -> None:
         self.executor = _ManualExecutor()
-        self.pipeline, _capture, _activity, _ocr, _translator, self.tts, _audio = _pipeline(tmp_path, self.executor)
+        self.pipeline, _capture, _activity, _ocr, _translator, self.tts, self.audio = _pipeline(tmp_path, self.executor)
         self.now = 10.0
         self.pipeline._clock = lambda: self.now
         self.current = OcrResult('')
@@ -38,6 +38,12 @@ class ContractReplay:
         self.executor.run_next()
         while self.executor.jobs:
             self.executor.run_next()
+        # This replay models tiny PCM completed before the next observation,
+        # not an indefinitely playing sink. Active audio is tested separately.
+        while len(self.audio.completed_callbacks) > getattr(self, '_completed', 0):
+            index = getattr(self, '_completed', 0)
+            self._completed = index + 1
+            self.audio.completed_callbacks[index]()
         return self.pipeline.snapshot.ocr_decision_history[-1]
 
     def close(self) -> None:

@@ -17,6 +17,7 @@ import time
 from typing import Protocol
 import unicodedata
 from uuid import uuid4
+from weakref import WeakSet
 
 from game_optimization_linux.models.narrator import (
     CaptureFrame,
@@ -2542,6 +2543,7 @@ class PhraseDeduplicator:
     def __init__(self) -> None:
         self._spoken_at: dict[str, float] = {}
         self._reserved: dict[int, str] = {}
+        self._playing: dict[int, str] = {}
         self._visible_phrase = ""
         self._episode_identity = ""
         self._canonical_text = ""
@@ -2603,7 +2605,7 @@ class PhraseDeduplicator:
         if identity == self._visible_phrase:
             self.last_rejection_reason = "visible_duplicate"
             return None
-        for reserved_text in self._reserved.values():
+        for reserved_text in (*self._reserved.values(), *self._playing.values()):
             if self._recent_match(normalized, reserved_text):
                 self.last_rejection_reason = "pending_duplicate"
                 return None
@@ -2721,6 +2723,9 @@ class PhraseDeduplicator:
 
     def release(self, request_id: int) -> None:
         """Release unsaid work, including its episode latch so it can retry."""
+        # Audio that actually started keeps its episode/history. Only its
+        # lifetime reservation ends here; it must not become retryable work.
+        self._playing.pop(request_id, None)
         text = self._reserved.pop(request_id, None)
         if text is not None and self._episode_match(text):
             self._visible_phrase = ""
@@ -2730,13 +2735,16 @@ class PhraseDeduplicator:
             self._active_episode_id = 0
 
     def clear_pending(self) -> None:
+        self._playing.clear()
         for request_id in tuple(self._reserved):
             self.release(request_id)
 
     def mark_spoken(self, text: str, *, now: float, request_id: int | None = None) -> None:
         if request_id is not None:
             # Do not clear the visible latch on success.
-            self._reserved.pop(request_id, None)
+            reserved = self._reserved.pop(request_id, None)
+            if reserved is not None:
+                self._playing[request_id] = reserved
         identity = subtitle_identity(text)
         if identity:
             self._spoken_at[identity] = now
@@ -3119,6 +3127,9 @@ class NarratorPipeline:
         self._clock = clock
         self._events: SimpleQueue[NarratorEvent] = SimpleQueue()
         self._lock = RLock()
+        # A delivered Future is a single operation, even if its completion is
+        # delivered again. Weak references do not retain completed audio/results.
+        self._consumed_completions: WeakSet = WeakSet()
         self._settings: NarratorGameSettings | None = None
         self._session_id = ""
         self._generation = 0
@@ -3184,7 +3195,19 @@ class NarratorPipeline:
 
     def diagnostic_context(self) -> dict[str, object]:
         with self._lock:
-            return {"session_id": self._session_id, "generation": self._generation}
+            return {"session_id": self._session_id, "generation": self._generation,
+                    "pipeline_id": id(self), "deduplicator_id": id(self._deduplicator),
+                    "pid": os.getpid()}
+
+    def _consume_completion(self, future: Future, stage: str, request_id: int) -> bool:
+        with self._lock:
+            if future in self._consumed_completions:
+                self._trace(stage + "_completion_ignored", phrase_id=request_id,
+                            future_id=id(future), reason="already_consumed")
+                return False
+            self._consumed_completions.add(future)
+            self._trace(stage + "_completion", phrase_id=request_id, future_id=id(future))
+            return True
 
     def _trace(self, event: str, *, phrase_id: int = 0, **fields: object) -> None:
         if self._diagnostic is not None:
@@ -3731,6 +3754,10 @@ class NarratorPipeline:
     def submit_frame(self, frame: CaptureFrame) -> None:
         with self._lock:
             received_at = self._clock()
+            self._trace("capture_frame", frame_timestamp=frame.timestamp_monotonic,
+                        frame_session=frame.session_id, frame_generation=frame.generation,
+                        source_id=frame.source_id,
+                        frame_hash=blake2b(frame.pixels, digest_size=16).hexdigest())
             settings = self._settings
             if (
                 settings is None
@@ -3965,6 +3992,9 @@ class NarratorPipeline:
         self._request_id += 1
         request_id = self._request_id
         self._request_active = True
+        self._trace("ocr_submitted", phrase_id=request_id,
+                    frame_timestamp=frame.timestamp_monotonic, source_id=frame.source_id,
+                    frame_hash=blake2b(frame.pixels, digest_size=16).hexdigest())
         self._snapshot = replace(
             self._snapshot,
             ocr_status="processing",
@@ -4016,6 +4046,8 @@ class NarratorPipeline:
         visual_decision: str,
         frame_digest: bytes | None = None,
     ) -> None:
+        if not self._consume_completion(future, "ocr", request_id):
+            return
         try:
             result = future.result()
         except Exception as error:
@@ -4193,6 +4225,16 @@ class NarratorPipeline:
                 if observation.accepted_text
                 else None
             )
+            self._trace("dedup_checked", phrase_id=request_id,
+                        text=observation.accepted_text or observation.filtered_text,
+                        identity_text=subtitle_identity(observation.filtered_text),
+                        accepted=bool(phrase), reason=self._deduplicator.last_rejection_reason,
+                        reserved_ids=list(self._deduplicator._reserved),
+                        playing_ids=list(self._deduplicator._playing),
+                        history_size=len(self._deduplicator._spoken_at),
+                        history_age_ms=[max(0, (now - t) * 1000)
+                                        for t in self._deduplicator._spoken_at.values()],
+                        cooldown_ms=settings.duplicate_cooldown_ms)
             final_decision = observation.decision or "rejected_unknown"
             reason_code = observation.reason_code or rejection_reason or final_decision
             if observation.accepted_text and phrase is None:
@@ -4474,6 +4516,7 @@ class NarratorPipeline:
                 recognized_at=now,
             )
             self._deduplicator.reserve(request_id, phrase)
+            self._trace("phrase_reserved", phrase_id=request_id, text=phrase)
             if self._narration_busy:
                 if len(self._narration_queue) >= NARRATION_QUEUE_LIMIT:
                     _, _, dropped_id = self._narration_queue.popleft()
@@ -4503,6 +4546,8 @@ class NarratorPipeline:
             if settings is None:
                 return
             self._narration_busy = True
+            self._trace("fifo_dequeued", phrase_id=request_id, text=phrase,
+                        queue_depth=len(self._narration_queue))
             generation = self._generation
             accepted_at = timing.accepted_at
             first_visible_frame_timestamp = timing.first_visible_frame_timestamp
@@ -4616,6 +4661,8 @@ class NarratorPipeline:
         work_id: int,
         timing: _AcceptedSubtitleTiming,
     ) -> None:
+        if not self._consume_completion(future, "translation", work_id):
+            return
         with self._lock:
             self._stage_futures.discard(future)
             self._stage_kinds.pop(future, None)
@@ -4886,6 +4933,8 @@ class NarratorPipeline:
         work_id: int,
         timing: _AcceptedSubtitleTiming,
     ) -> None:
+        if not self._consume_completion(future, "tts", work_id):
+            return
         with self._lock:
             self._stage_futures.discard(future)
             self._stage_kinds.pop(future, None)
@@ -4963,6 +5012,8 @@ class NarratorPipeline:
                 model="warm" if audio.worker_reused else "cold",
             )
             try:
+                self._trace("audio_submitted", phrase_id=work_id, source_text=source_text,
+                            text=translated, pcm_hash=blake2b(audio.samples, digest_size=16).hexdigest())
                 self.audio.play(
                     audio,
                     volume=settings.volume,
@@ -5021,6 +5072,10 @@ class NarratorPipeline:
                 return
             self._latest_audio_request_id = request_id
             self._deduplicator.mark_spoken(source_text, now=self._clock(), request_id=request_id)
+            self._trace("history_written", phrase_id=request_id, text=source_text,
+                        history_size=len(self._deduplicator._spoken_at),
+                        reserved_ids=list(self._deduplicator._reserved),
+                        playing_ids=list(self._deduplicator._playing))
             now = self._clock()
             self._trace("playback_started", phrase_id=request_id,
                         source_text=source_text, audio_queue_wait_ms=elapsed_ms,
@@ -5099,6 +5154,8 @@ class NarratorPipeline:
         self, *, generation: int, request_id: int, model: str
     ) -> None:
         with self._lock:
+            if generation == self._generation:
+                self._deduplicator.release(request_id)
             if (
                 generation != self._generation
                 or request_id != self._latest_audio_request_id
@@ -5149,6 +5206,9 @@ class NarratorPipeline:
 
     def _release_phrase(self, request_id: int) -> None:
         text = self._deduplicator._reserved.get(request_id)
+        self._trace("reservation_released", phrase_id=request_id, text=text,
+                    was_reserved=text is not None,
+                    history_size=len(self._deduplicator._spoken_at))
         if text is not None:
             self._text_gate.forget_accepted(text)
         self._deduplicator.release(request_id)

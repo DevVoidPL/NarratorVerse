@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 from pathlib import Path
@@ -14,7 +15,7 @@ from uuid import uuid4
 class DialogueTrace:
     """Nonblocking producer; bounded writer queue, never on the inference path.
 
-    Full text is intentional and opt-in. Existing files/symlinks are refused.
+    Text-bearing fields are hashed before enqueueing. Existing files/symlinks are refused.
     Trace loss is counted and reported, never silently labelled a complete run.
     """
     def __init__(self, path, *, run_id='', clock=time.monotonic):
@@ -34,7 +35,16 @@ class DialogueTrace:
         self._thread.start()
 
     def emit(self, event, **fields):
-        record = dict(fields, event=event, monotonic=self.clock(), run_id=self.run_id)
+        safe = {}
+        for key, value in fields.items():
+            if isinstance(value, str) and (key == 'text' or 'text' in key or
+                                         key in ('message', 'canonical', 'candidate')):
+                safe[key + '_sha256'] = hashlib.sha256(value.encode('utf-8')).hexdigest()
+                safe[key + '_length'] = len(value)
+            else:
+                safe[key] = value
+        record = dict(safe, event=event, monotonic=self.clock(), run_id=self.run_id,
+                      pid=os.getpid())
         # Serialize only enqueue/close, never file I/O. Nothing may be enqueued
         # after shutdown has established the end of this run.
         with self._producer_lock:

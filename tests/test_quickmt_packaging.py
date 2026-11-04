@@ -64,7 +64,9 @@ def test_standard_bundle_has_no_model_path_or_experimental_launch_switches():
     text = (ROOT / 'scripts/build-flatpak.sh').read_text()
     assert 'NARRATORVERSE_EXPERIMENT_' not in text
     assert '--quickmt' not in text
-    assert 'narratorverse.quickmt_runtime' in text
+    assert 'scripts/build-fresh.sh' in text
+    lock = (ROOT / 'flatpak/python-requirements.lock').read_text()
+    assert 'sentencepiece==0.2.1 --hash=sha256:' in lock
 
 
 def test_reinstall_script_has_valid_shebang():

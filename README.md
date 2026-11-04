@@ -16,8 +16,14 @@ bez CUDA, a mowa jest generowana lokalnie przez Pipera.
 **Nie publikowac jeszcze pakietu:** przeglad redystrybucji runtime pozostaje
 otwarty. Szczegoly: `docs/REDISTRIBUTION.md`. Stan prac i wyniki:
 `docs/SOURCE_PUBLICATION.md`; historyczna integracja: `docs/INTEGRATION_REPORT.md`;
-zmiany i manualny test GTA V: `RELEASE_NOTES.md`.
+zmiany i historyczny test GTA V: `RELEASE_NOTES.md`.
 Instalacja: `docs/INSTALL.md`; diagnostyka: `docs/DIAGNOSTICS.md`.
+
+Swiezy build z przypietych zaleznosci: [FRESH_BUILD](docs/FRESH_BUILD.md).
+Stan przygotowania: [RELEASE_PREPARATION](docs/RELEASE_PREPARATION.md).
+Lokalny kandydat zostal zbudowany, ale nie jest publicznym wydaniem.
+**P0 powtorzen pozostaje OPEN**: wymagany jest rzeczywisty test GTA/capture,
+Piper i PipeWire z nowym JSONL. Historyczny test GTA nie zamyka tej bramki.
 
 ## Podglad
 
@@ -125,7 +131,8 @@ LUFS ani analiza glosnosci gry. Nie dotyczy Szybkiego odczytu.
 Jakosc OCR zalezy od czcionki, tla, rozdzielczosci i zaznaczenia napisow.
 Nie kazda kwestia zostanie odczytana poprawnie. Identyczna kwestia wymaga
 konca epizodu oraz wygasniecia historii (4500 ms domyslnie od startu audio).
-Rezerwacje chronia tez kwestie nadal oczekujace w FIFO. Historia nie dodaje
+Rezerwacje chronia tez kwestie nadal oczekujace w FIFO i aktualnie odtwarzane,
+az do zdarzenia terminalnego. Historia nie dodaje
 opoznienia przed odtwarzaniem. Program nie ma dostepu do skryptu
 dialogow gry ani listy nazw postaci.
 
@@ -148,8 +155,9 @@ nazwy aplikacji, urzadzen oraz lokalne sciezki.
 Pobieranie komponentow ujawnia ich serwerom zwykle dane polaczenia.
 Uprawnienie sieciowe Flatpaka nie jest gwarancja odlaczenia od sieci.
 Profile, glosy, cache tlumaczen i zgody portalu sa lokalnymi danymi XDG,
-nie czescia repozytorium. Opcjonalny trace zapisuje pelne napisy i tlumaczenia;
-przejrzyj go przed udostepnieniem.
+nie czescia repozytorium. Diagnostyczny JSONL
+`NARRATORVERSE_DIAGNOSTIC_TRACE` hashuje pola tekstowe; zwykle logi i inne
+trace moga zawierac pelne napisy. Przejrzyj kazdy plik przed udostepnieniem.
 
 ## Kod i budowa
 
@@ -157,67 +165,40 @@ Interfejs korzysta z Svelte i TypeScript, aplikacja okienkowa z Tauri 2,
 a osobny proces Python/Qt zajmuje sie przechwytywaniem i przetwarzaniem napisow.
 Wersje zaleznosci interfejsu i Rust sa zapisane w plikach blokad.
 
-Repozytorium zrodlowe nie zawiera modeli ani lokalnego srodowiska wykonawczego.
-Obecne skrypty budowania pakietu korzystaja z przygotowanych katalogow
-`.runtime` i `components`. Pelna, odtwarzalna budowa tych zaleznosci od zera
-nie jest jeszcze przygotowana. Samo sklonowanie kodu nie wystarczy do
-zbudowania kompletnego Flatpaka.
+Repozytorium zrodlowe nie zawiera modeli ani lokalnego runtime.
+Aktualna procedura: [FRESH_BUILD](docs/FRESH_BUILD.md), wymagania i ograniczenia:
+[INSTALL](docs/INSTALL.md). Budowa nie wymaga starego snapshotu `.runtime`.
+Wymaga przypietych SDK/Platform, narzedzi hosta i oryginalow glosu wlasciciela.
 
-Przygotowane srodowisko korzysta z Node 22.22.0, GNOME SDK/Platform 49
-i rozszerzenia Rust SDK 25.08. Polecenia ponizej uruchamiaj z katalogu projektu;
-zmienna `ROOT` przechowuje jego pelna sciezke. Bloki dzialaja tez z fish:
+Z katalogu projektu, podajac wlasne absolutne sciezki:
 
 ```sh
-sh -eu -c '
-  ROOT="$PWD"
-  cd "$ROOT"
-  npm ci --no-audit --no-fund
-  npm run check
-  npm run test:ui
-  npm run build
-'
+sh scripts/build-fresh.sh /absolute/new/work-directory /absolute/owner-input
 ```
 
-Testy backendu wymagaja przygotowanego srodowiska Python/Qt oraz pytest.
-Lokalny skrypt uruchamia je w GNOME SDK bez uruchamiania aplikacji:
+Katalog roboczy nie moze istniec. Skrypt nie eksportuje, nie instaluje i nie
+publikuje pakietu. Skrypty build.sh/build-flatpak.sh/prepare-quickmt-runtime.sh
+przyjmuja te same argumenty i deleguja do build-fresh.sh. Automatyczna
+reinstalacja jest zablokowana na czas walidacji. Archiwum legacy-snapshot
+nie jest aktualna instrukcja.
+
+Kontrole frontendu (nie test instalacji ani audio):
 
 ```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/test.sh"'
+npm ci --no-audit --no-fund
+npm run check
+npm run test:ui
+npm run build
 ```
 
-Pozostale kontrole zrodel i interfejsu:
-
-```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/check-source.sh"'
-```
-
-Budowa interfejsu i Rust, po przygotowaniu srodowiska:
-
-```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/build.sh"'
-```
-
-Samo pakowanie gotowego pliku wykonywalnego:
-
-```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/build-flatpak.sh"'
-```
-
-Budowa i reinstalacja NarratorVerse bez kasowania danych uzytkownika
-(wczesniej zamknij aplikacje):
-
-```sh
-sh -eu -c 'ROOT="$PWD"; sh "$ROOT/scripts/reinstall.sh"'
-```
-
-Skrypt reinstalacji zachowuje poprzedni katalog budowania i wypisuje commit
-zainstalowanego pakietu. Pakowanie odmawia nadpisania istniejacego katalogu
-budowania. Lokalny, niepodpisany pakiet i suma SHA-256 trafiaja do katalogu
-artefaktow Flatpaka. Nie jest to jeszcze pakiet po pelnym audycie redystrybucji.
+`sh scripts/test.sh` korzysta z wczesniej przygotowanego lokalnego srodowiska
+Python/Qt/pytest w GNOME SDK. To pomocnik testowy, nie sposob przygotowania
+runtime swiezego buildu. Szczegoly w `docs/INSTALL.md`.
 
 ## Testy
 
-Aktualne wyniki sa w `docs/SOURCE_PUBLICATION.md`, polecenia w `docs/INSTALL.md`,
+Historyczne wyniki integracji sa w `docs/SOURCE_PUBLICATION.md`;
+stan tej galezi w `docs/RELEASE_PREPARATION.md`, polecenia w `docs/INSTALL.md`,
 a zasady prywatnosci logow, pomiary CPU
 i ograniczenia walidacji w `docs/DIAGNOSTICS.md`.
 
@@ -234,8 +215,8 @@ pakietow NarratorVerse na podstawie zgody wlasciciela. Tresc licencji i zakres
 zezwolenia sa zachowane w dokumentacji licencyjnej.
 
 Informacje o pochodzeniu kodu, zaleznosciach i ograniczeniach redystrybucji
-sa w katalogu licencji. Lokalny pakiet korzysta z kopii srodowiska wykonawczego,
-a audyt licencji i obowiazkow dotyczacych zrodel zaleznosci nie jest zakonczony.
+sa w katalogu licencji. Swiezy kandydat korzysta z przypietych wejsc,
+ale audyt licencji i obowiazkow dotyczacych zrodel zaleznosci nie jest zakonczony.
 Wlasne glosy, profile i dane uzytkownika nie sa czescia publikowanych zrodel.
 ## Translator i model
 

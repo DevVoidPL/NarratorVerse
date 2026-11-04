@@ -1,9 +1,26 @@
 # 0.2.0-beta.1 — przygotowywana, nieopublikowana
 
 Data przygotowania źródeł: 3 listopada 2026. Nie utworzono nowego tagu, release
-ani Flatpaka. Kolejny minor po `v0.1.0` oznacza zmianę translatora i deduplikacji;
+ani publicznego Flatpaka. Kolejny minor po `v0.1.0` oznacza zmianę translatora i deduplikacji;
 `beta.1` określa stan przed wydaniem. Publikację źródeł oceniamy osobno od
 redystrybucji runtime, nadal zablokowanej przez `docs/REDISTRIBUTION.md`.
+
+4 listopada 2026 rozpoczęto przygotowanie gałęzi `release/0.2.0-beta.1`
+z aktualnego `origin/main` po scaleniu PR #1. Plan nowego buildu i bramki
+dotyczące przyszłego pakietu: `docs/RELEASE_PREPARATION.md`.
+Zbudowano lokalne kandydaty świeżego buildu; nie opublikowano nowego Flatpaka.
+Procedura: [FRESH_BUILD](docs/FRESH_BUILD.md).
+
+## P0 powtórzeń — OPEN
+
+Publikacja źródeł nie zamyka P0 i nie jest zgodą na wydanie binarne.
+Zmiany źródeł obejmują ochronę przez czas odtwarzania, obsługę zdarzeń terminalnych
+i idempotencję callbacków. Testy na atrapach nie dowodzą usunięcia zgłoszonego
+problemu Arch/GTA. Wymagana jest rzeczywista sesja capture → OCR → Piper →
+PipeWire z nowym JSONL: [P0_ARCH_ACCEPTANCE](docs/P0_ARCH_ACCEPTANCE.md).
+Przypadek `1508 → 1515` („Rzecz jasna...”) pozostaje nierozstrzygnięty;
+nie dodano spekulacyjnego filtra. ESC/interface OCR jest oczekiwany.
+ASR pozostaje odłożone, bez implementacji ani dokumentu koncepcyjnego.
 
 ## Zmiany
 
@@ -28,7 +45,7 @@ redystrybucji runtime, nadal zablokowanej przez `docs/REDISTRIBUTION.md`.
 - Runtime SentencePiece trafia do standardowego stagingu. Argos i jego
   tokenizery nie sa uzywane ani dolaczane jako komponent tlumaczenia.
 
-## Test manualny użytkownika
+## Historyczny test manualny użytkownika — nie zamyka P0
 
 Zgłoszony przez użytkownika podczas przygotowania źródeł:
 
@@ -41,7 +58,8 @@ Zgłoszony przez użytkownika podczas przygotowania źródeł:
 | Tłumaczenie | wyłączone |
 | Zaobserwowane powtórzone zdania | **0** |
 
-To test manualny, nie wynik automatycznych testów ani gwarancja niezawodności.
+To historyczna obserwacja, **nie dowód zamknięcia P0**, nie wynik bieżących
+testów automatycznych ani gwarancja niezawodności.
 Nie podano dokładnej daty sesji ani pomiarów RAM, opóźnienia i długości FIFO.
 Ta sesja **nie sprawdza QuickMT**, ponieważ tłumaczenie było wyłączone.
 Nie wykonano ani nie deklarujemy testu QuickMT w Batmanie w tej wersji.
@@ -54,7 +72,8 @@ w oknie historii; rozroznienie bez obrazu/rozmowcy nie zawsze jest mozliwe.
 FIFO jest ograniczone: dluga mowa i szybkie napisy nadal moga spowodowac
 przepelnienie zgodnie z dotychczasowa polityka.
 
-Aktualne wyniki testów źródeł: `docs/SOURCE_PUBLICATION.md`.
+Stan przygotowania tej gałęzi: `docs/RELEASE_PREPARATION.md`.
+Historyczne wyniki testów integracji: `docs/SOURCE_PUBLICATION.md`.
 Historyczne testy inferencji i pomiary providerów: `docs/INTEGRATION_REPORT.md`.
 Nie zweryfikowano dłuższej sesji z aktywnym tłumaczeniem ani słabszego CPU.
 Nie przenosic wynikow lokalnego CPU na slabsze maszyny. Test providerow

@@ -3,6 +3,12 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
+# Do not let the old two-stage installer consume historical staging or silently
+# install an unvalidated candidate. Fresh builds have no automatic installation.
+printf '%s\n' 'Automatic reinstall is disabled during the fresh-build transition.' \
+  'Build a new candidate with scripts/build-fresh.sh; installation requires validation.' >&2
+exit 2
+
 printf '%s\n' '1/3 Budowanie NarratorVerse...'
 sh "$ROOT/scripts/build.sh"
 

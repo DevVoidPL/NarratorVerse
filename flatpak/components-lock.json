@@ -1,0 +1,95 @@
+[
+  {
+    "component_id": "ocr.english-local",
+    "kind": "ocr",
+    "version": "tessdata_fast-8741641",
+    "license_id": "Apache-2.0",
+    "artifact_license_id": "Apache-2.0",
+    "runtime_license_id": "Apache-2.0",
+    "attribution": "Tesseract OCR and tessdata_fast",
+    "source_url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata",
+    "files": [
+      {
+        "filename": "eng.traineddata",
+        "target": "tessdata/eng.traineddata",
+        "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata",
+        "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+        "size_bytes": 4113088
+      },
+      {
+        "filename": "tessdata-LICENSE",
+        "target": "LICENSE",
+        "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "component_id": "ocr.polish-local",
+    "kind": "ocr",
+    "version": "tessdata_fast-8741641",
+    "license_id": "Apache-2.0",
+    "artifact_license_id": "Apache-2.0",
+    "runtime_license_id": "Apache-2.0",
+    "attribution": "Tesseract OCR and tessdata_fast",
+    "source_url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/pol.traineddata",
+    "files": [
+      {
+        "filename": "pol.traineddata",
+        "target": "tessdata/pol.traineddata",
+        "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/pol.traineddata",
+        "sha256": "c4476cdbc0e33d898d32345122b7be1cbf85ace15f920f06c7714756e1ef79b2",
+        "size_bytes": 4765518
+      },
+      {
+        "filename": "tessdata-LICENSE",
+        "target": "LICENSE",
+        "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "component_id": "ocr.rapidocr-local",
+    "kind": "ocr",
+    "version": "rapidocr-3.10.0-ppocrv6-small",
+    "license_id": "Apache-2.0",
+    "artifact_license_id": "Apache-2.0",
+    "runtime_license_id": "Apache-2.0",
+    "attribution": "RapidAI/RapidOCR; PaddleOCR models by PaddlePaddle",
+    "archive": {
+      "filename": "rapidocr-3.10.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/59/07/203065283bba0c5e9c10af3602dc25ab3e59ee54dc2d1d22c8faeabf5ed8/rapidocr-3.10.0-py3-none-any.whl",
+      "sha256": "2fc34e26cd0f48514804a94f8832283039c7334076bff60768b1fed9ad068050"
+    }
+  },
+  {
+    "component_id": "tts.voidek",
+    "kind": "tts",
+    "version": "e991-ca2ad0a",
+    "license_id": "LicenseRef-Voidek-Model",
+    "artifact_license_id": "LicenseRef-Voidek-Model",
+    "runtime_license_id": "GPL-3.0-or-later",
+    "attribution": "Voidek, Polish Piper voice by DevVoidPL",
+    "files": [
+      {
+        "filename": "voidek-pl-e991.onnx",
+        "target": "voices/voidek-pl-e991.onnx",
+        "sha256": "ca2ad0a22273e3850ce3def4d098f1993c2393c71584f474636afd08ab6af53b",
+        "size_bytes": 63516050,
+        "owner_input": true
+      },
+      {
+        "filename": "voidek-pl-e991.onnx.json",
+        "target": "voices/voidek-pl-e991.onnx.json",
+        "sha256": "4b14423d0575b35bc4ace4dc83d639e9f8d0fa8eab3f238bd9597bfab50af5db",
+        "size_bytes": 5033,
+        "owner_input": true
+      }
+    ],
+    "project_notices": [
+      "VOIDEK-LICENSE.md",
+      "VOIDEK-MODEL-CARD.md"
+    ]
+  }
+]

@@ -43,9 +43,12 @@ def test_beta_version_is_consistent_across_source_metadata():
     assert re.fullmatch(r'\d+\.\d+\.\d+-beta\.\d+', version)
 
 
-def test_bundle_filename_uses_the_declared_version_without_another_beta_suffix():
+def test_default_packaging_delegates_to_fresh_build_without_publishing():
     script = (ROOT/'scripts/build-flatpak.sh').read_text()
-    assert 'NarratorVerse-${VERSION}-x86_64.flatpak' in script
+    assert 'scripts/build-fresh.sh' in script
+    fresh = (ROOT/'scripts/build-fresh.sh').read_text()
+    assert 'build-bundle' not in fresh
+    assert 'build-export' not in fresh
     assert '${VERSION}-beta-integration' not in script
 
 

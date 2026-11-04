@@ -1,57 +1,71 @@
-# Instalacja i budowanie źródeł beta
+# Instalacja i budowanie zrodel beta
 
-Wersja źródeł: **0.2.0-beta.1**, bez tagu i wydania. Nie ma publicznego Flatpaka
-odpowiadającego tym źródłom. Obowiązki przed dystrybucją binarną opisuje
-`docs/REDISTRIBUTION.md`. Test manualny GTA V z wyłączonym tłumaczeniem
-opisano w `RELEASE_NOTES.md`; nie zastępuje testu sesji z QuickMT.
+Wersja zrodel: **0.2.0-beta.1**. Zbudowano lokalne kandydaty, ale nie
+opublikowano odpowiadajacego im Flatpaka. Publikacja zrodel nie oznacza
+wydania binarnego. **P0 powtorzen pozostaje OPEN**, podobnie jak przeglad
+redystrybucji: [REDISTRIBUTION](REDISTRIBUTION.md).
 
-## Lokalny pakiet
+## Swiezy build lokalnego kandydata
 
-Tylko po świadomym przygotowaniu własnego lokalnego builda, w katalogu projektu:
+Pelna procedura: [FRESH_BUILD](FRESH_BUILD.md).
+Stan i bramki: [RELEASE_PREPARATION](RELEASE_PREPARATION.md).
+
+Wymagane: Linux x86_64, Python 3.13, git, tar/xz, Flatpak, flatpak-builder,
+AppStream z Compose, elfutils i debugedit. Instalacja **uzytkownika** Flatpak musi
+zawierac GNOME SDK/Platform 49 i rozszerzenie Rust stable 25.08 z dokladnymi
+commitami zapisanymi w `flatpak/sdk-lock.json`. Sama nazwa galezi nie wystarcza.
+Potrzebne sa oryginalne pliki wlasciciela glosu Voidek w zewnetrznym katalogu:
+`voidek-pl-e991.onnx` i `voidek-pl-e991.onnx.json`; hashe sa sprawdzane.
+Nie kopiuj komponentow ani runtime z istniejacej instalacji.
+
+Z katalogu repozytorium, podajac wlasne absolutne sciezki:
 
 ```sh
-sh -eu -c 'cd flatpak/artifacts; sha256sum -c SHA256SUMS'
-flatpak install --user --bundle flatpak/artifacts/NarratorVerse-0.2.0-beta.1-x86_64.flatpak
-flatpak run io.github.DevVoidPL.NarratorVerse
+sh scripts/build-fresh.sh /absolute/new/work-directory /absolute/owner-input
 ```
 
-Powyższy nowy pakiet nie został zbudowany podczas przygotowania źródeł. Stary
-lokalny `0.1.0-beta-integration` nie odpowiada bieżącej wersji źródeł.
-Nie usuwaj katalogu danych przy aktualizacji. Instalacja/reinstalacja nie jest
-wykonywana automatycznie przez agenta integracyjnego.
+Katalog roboczy nie moze istniec. Skrypt pobiera przypiete wejscia, przygotowuje
+nowe cache npm/Cargo, buduje przez flatpak-builder, wykonuje offline smoke test
+w Platform i zapisuje `payload-inventory.json`. Zawiera rowniez niezacommitowane
+zmiany zrodel; sam HEAD nie identyfikuje brudnego kandydata. Zachowaj snapshot.
+Pobieranie wymaga sieci; kompilacja uzywa przygotowanych wejsc offline.
 
-## Pierwsze uruchomienie
+`scripts/build.sh`, `scripts/build-flatpak.sh` i
+`scripts/prepare-quickmt-runtime.sh` deleguja do tej samej procedury i przyjmuja
+te same argumenty. Stary `.runtime`, `target/release` i `.tools/quickmt-python`
+nie sa wejsciami swiezego buildu. Archiwum `scripts/legacy-snapshot/` nie jest
+procedura instalacji. `scripts/reinstall.sh` jest celowo zablokowany na tym etapie.
 
-1. Otworz **Komponenty** i zainstaluj **QuickMT English to Polish (CPU)**.
-   Pobranie to okolo 384.9 MiB. Siec potrzebna jest do instalacji/naprawy,
-   nie do kolejnych tlumaczen. Postep jest sumaryczny dla calego komponentu.
-2. Sprawdz dostepnosc OCR i glosu Voidek. Opcje weryfikacji, naprawy,
-   anulowania pobrania i usuniecia modelu sa w tym samym panelu.
-3. Wybierz zrodlo przez portal i potwierdz obszar napisow. Napisy musza byc
-   widoczne na ekranie. Ustaw je mozliwie duze i kontrastowe.
-4. Wybierz polskie napisy albo tlumaczenie angielskich na polski, nastepnie
-   uruchom czytanie. Pauza zachowuje portal, ale odrzuca nieodtworzone zadania;
-   wznowienie nie przywraca ich ze starej kolejki.
+## Instalacja
 
-Brak QuickMT nie uruchamia zastępczego translatora ani chmury. Polskie napisy i Szybki odczyt
-nie wymagaja translatora. Model QuickMT nie jest dolaczany do Flatpaka.
+Nie ma obecnie publicznego pakietu do instalacji. Swiezy build tworzy lokalny
+katalog `build`, nie eksportuje bundla i niczego nie instaluje.
+Nie uruchamiaj historycznych komend instalacji starego pakietu jako biezacego wydania.
+Prywatny test na osobnym koncie opisuje [P0_ARCH_ACCEPTANCE](P0_ARCH_ACCEPTANCE.md);
+wymaga osobno dostarczonego, zidentyfikowanego pakietu. Nie kasuj danych uzytkownika.
 
-## Sciezki i aktualizacja profili
+## Pierwsze uruchomienie po przygotowaniu instalacji testowej
 
-Komponent znajduje sie w
-`$XDG_DATA_HOME/narratorverse/narrator/components/translation.quickmt-en-pl`.
-Bez absolutnego `XDG_DATA_HOME` uzywany jest `~/.local/share`.
-Flatpak ustawia te zmienne we wlasnym katalogu aplikacji. Nie wskazuj recznie
-modelu; pobierz komponent w GUI.
+1. Otworz **Komponenty**. Dla EN -> PL zainstaluj **QuickMT English to Polish (CPU)**,
+   okolo 385 MiB. Model nie jest dolaczany do Flatpaka. Siec jest potrzebna do
+   pobrania/naprawy, nie do pozniejszej inferencji.
+2. Sprawdz OCR i glos Voidek. Panel umozliwia weryfikacje, naprawe, anulowanie
+   pobierania i usuwanie komponentow.
+3. Wybierz zrodlo przez portal i zaznacz obszar widocznych, kontrastowych napisow.
+4. Wybierz polskie napisy lub tlumaczenie angielskich na polski i uruchom czytanie.
+   Pauza odrzuca nieodtworzone zadania; wznowienie nie przywraca starej kolejki.
 
-Profile poprzedniej wersji sa atomowo aktualizowane do jedynego translatora
-QuickMT. Identyfikatory cache sa rozdzielone, wiec wpisy starego translatora nie sa
-traktowane jako tlumaczenia QuickMT. Dane dawnych eksperymentow nie sa
-automatycznie przenoszone ani kasowane.
+Brak QuickMT nie uruchamia chmury ani zastepczego translatora. Polskie napisy
+i Szybki odczyt nie wymagaja translatora.
 
-## Budowanie
+Komponent QuickMT uzywa
+`$XDG_DATA_HOME/narratorverse/narrator/components/translation.quickmt-en-pl`;
+bez absolutnego `XDG_DATA_HOME` baza jest `~/.local/share`. Flatpak ustawia wlasne
+katalogi aplikacji. Nie wskazuj recznie modelu; korzystaj z panelu Komponenty.
+Migracja profili nie usuwa danych dawnych eksperymentow; ich cache nie jest
+traktowany jako tlumaczenia QuickMT.
 
-Frontend można sprawdzić bez pełnego runtime:
+## Kontrole zrodel
 
 ```sh
 npm ci --no-audit --no-fund
@@ -60,34 +74,8 @@ npm run test:ui
 npm run build
 ```
 
-Do backendu i obecnego pakowania wymagane: Linux x86_64, Node/npm,
-GNOME SDK/Platform 49, rozszerzenie Rust 25.08, pytest w `.tools/test-python` i
-przygotowany lokalny snapshot `.runtime` oraz cztery komponenty z listy
-w `scripts/stage-flatpak.py`. To nadal nie jest odtwarzalny build wszystkich
-zaleznosci ze zrodel. Repozytorium nie dostarcza kompletnego sposobu odtworzenia
-tego snapshotu; nie kopiuj go z nieznanych pakietów. `.tools`, runtime, modele
-i artefakty nie trafiaja do Git. Poprzednia walidacja używała Node 22.22.0
-i Pythona 3.13.
-
-Kontrole istniejącego środowiska, bez budowy runtime i instalacji:
-
-```sh
-sh scripts/test.sh
-sh scripts/check-source.sh
-```
-
-Dopiero przy świadomym lokalnym budowaniu aplikacji i pakietu:
-
-```sh
-sh scripts/prepare-quickmt-runtime.sh
-sh scripts/build.sh
-sh scripts/build-flatpak.sh
-```
-
-`prepare-quickmt-runtime.sh` instaluje tylko przypiety wheel SentencePiece do
-izolowanego katalogu narzedzi budowania. Standardowy staging dolacza go do
-runtime; nie ma juz osobnego wariantu `--quickmt`. Skrypt pakowania odmawia
-nadpisania istniejacego stagingu; zachowaj poprzedni kandydat osobno.
-Nazwa przyszłego artefaktu jest wyprowadzana z wersji `0.2.0-beta.1` zapisanej
-w `package.json`. `scripts/reinstall.sh` zmienia lokalną instalację i nie jest
-częścią kontroli źródeł.
+`sh scripts/test.sh` jest pomocnikiem dla wczesniej przygotowanego lokalnego
+srodowiska testowego Python/Qt w GNOME SDK, z pytest w `.tools/test-python` i
+bibliotekami w `.runtime`. Nie przygotowuje tego srodowiska i nie jest wymogiem
+ani etapem swiezego buildu. `sh scripts/check-source.sh` sprawdza zrodla/frontend,
+ale nie testuje instalacji, portalu ani rzeczywistego audio.

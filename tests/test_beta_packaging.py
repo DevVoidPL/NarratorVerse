@@ -17,11 +17,10 @@ def test_normal_staging_requires_sentencepiece_and_excludes_argos():
 
 
 def test_standard_build_checks_staged_cpu_runtime_offline_without_bytecode():
-    text = (ROOT / 'scripts/build-flatpak.sh').read_text()
+    text = (ROOT / 'scripts/build-fresh.sh').read_text()
     assert '--quickmt' not in text
-    assert '--unshare=network' in text
     assert 'PYTHONDONTWRITEBYTECODE=1' in text
-    assert 'VERSION=' in text
+    assert '--disable-download' in text
 
 
 def test_no_experimental_launchers_required_or_packaged():
@@ -34,9 +33,10 @@ def test_no_experimental_launchers_required_or_packaged():
 def test_manifest_uses_allowlist_not_entire_workspace():
     import json
     manifest = json.loads((ROOT / 'flatpak/io.github.DevVoidPL.NarratorVerse.json').read_text())
-    sources = manifest['modules'][0]['sources']
+    sources = manifest['modules'][-1]['sources']
     assert not any(source.get('path') == '..' for source in sources)
-    assert any(source.get('dest') == '.tools/quickmt-python' for source in sources)
+    assert any(source.get('dest') == 'wheelhouse' for source in sources)
+    assert not any('.runtime' in source.get('path', '') for source in sources)
 
 
 def test_source_archive_excludes_local_inputs_and_machine_telemetry(tmp_path):

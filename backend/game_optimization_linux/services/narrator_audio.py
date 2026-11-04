@@ -210,7 +210,8 @@ class QtNarratorAudioOutput(QObject):
         if self._diagnostic is not None:
             try:
                 self._diagnostic(event, **playback.diagnostic_context,
-                                 phrase_id=playback.request_id, **fields)
+                                 phrase_id=playback.request_id, audio_output_id=id(self),
+                                 text=playback.text, playback_id=id(playback), **fields)
             except Exception:
                 logger.exception("Experimental audio observer failed")
 
@@ -287,6 +288,31 @@ class QtNarratorAudioOutput(QObject):
             buffer.deleteLater()
 
     def _start(self, playback: _Playback) -> None:
+        try:
+            self._start_unchecked(playback)
+        except Exception as error:
+            # This runs in a queued Qt slot: an exception cannot propagate to
+            # pipeline.audio.play(). Release the request here, including when
+            # device/sink construction or start() fails before audio begins.
+            self._current = None
+            sink, buffer = self._sink, self._buffer
+            self._sink = self._buffer = self._bytes = None
+            if sink is not None:
+                try:
+                    sink.stateChanged.disconnect(self._state_changed)
+                except (RuntimeError, TypeError):
+                    pass
+                try:
+                    sink.stop()
+                except Exception:
+                    logger.exception("Narrator failed sink cleanup")
+                sink.deleteLater()
+            if buffer is not None:
+                buffer.close()
+                buffer.deleteLater()
+            self._notify_failure(playback, f"Narrator audio start failed: {error}")
+
+    def _start_unchecked(self, playback: _Playback) -> None:
         audio_format = QAudioFormat()
         audio_format.setSampleRate(playback.audio.sample_rate)
         audio_format.setChannelCount(playback.audio.channels)
@@ -557,7 +583,9 @@ class QtNarratorAudioOutput(QObject):
         try:
             playback.error_callback(message)
         except Exception:
-            return
+            logger.exception("Narrator playback error observer failed")
+        finally:
+            self._notify_terminal(playback)
 
     @staticmethod
     def _notify_completed(playback: _Playback) -> None:

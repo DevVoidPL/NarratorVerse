@@ -72,12 +72,13 @@ def test_prepare_runtime_script_is_opt_in_and_does_not_modify_shared_runtime():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     script = (root / 'scripts/prepare-quickmt-runtime.sh').read_text()
-    assert '--require-hashes' in script
-    assert '--no-deps' in script
-    assert '--only-binary=:all:' in script
-    assert '.tools/quickmt-python' in script
+    assert 'scripts/build-fresh.sh' in script
+    manifest = (root / 'flatpak/io.github.DevVoidPL.NarratorVerse.json').read_text()
+    assert '--require-hashes' in manifest
+    assert '--no-deps' in manifest
+    assert '--only-binary=:all:' in manifest
     assert '--upgrade' not in script
-    requirements = (root / 'scripts/quickmt-runtime-requirements.txt').read_text()
+    requirements = (root / 'flatpak/python-requirements.lock').read_text()
     assert 'sentencepiece' in requirements
     assert 'c7f0fd2f2693309e6628aeeb2e2faf6edd221134dfccac3308ca0de01f8dab47' in requirements
     assert 'ctranslate2 @' not in requirements
