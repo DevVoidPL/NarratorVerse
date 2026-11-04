@@ -1,14 +1,4 @@
-"""Edge noise must not sink a correctly recognised sentence.
-
-Confirmed from a simultaneous capture of the game and the Narrator panel:
-
-    on screen : "Trzeba to szybko wrzucić do netu."
-    OCR       : "SS trzeba to szybkd wrzucić do netu EE"
-
-OCR read almost the whole line, but the scraps "SS" and "EE" at the edges
-dragged the phrase confidence down and the entire dialogue was dropped. Only the
-edges are trimmed; the misread "szybkd" in the middle is deliberately kept.
-"""
+"""Edge noise must not sink a correctly recognised sentence."""
 from __future__ import annotations
 import pytest
 from game_optimization_linux.services.narrator_ocr import TesseractOcrProvider

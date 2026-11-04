@@ -33,7 +33,6 @@ def generate():
     side = max(image.size)
     canvas = Image.new('RGBA', (side, side))
     canvas.paste(image, ((side-image.width)//2, (side-image.height)//2))
-    # Keep the owner-supplied source unchanged; all consumers use the same derivative.
     canvas.save(ROOT / 'data/icons/artwork.png')
     for size in (16, 24, 32, 48, 64, 128, 256, 512):
         destination = ROOT / 'data/icons' / f'{size}x{size}.png'

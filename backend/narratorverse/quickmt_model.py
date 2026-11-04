@@ -1,9 +1,4 @@
-"""Immutable public metadata, shared by the component catalog and provider.
-
-SHA-256 of the three small JSON files and upstream README was independently
-computed from the pinned revision on 2026-11-03 and cross-checked against the
-previously pinned Git blob identities. No model is downloaded on import.
-"""
+"""Pinned model metadata shared by the component catalog and provider."""
 QUICKMT_REVISION = '6209580ce1fe525214f29fc39725007b73410109'
 QUICKMT_COMPONENT_ID = 'translation.quickmt-en-pl'
 QUICKMT_PROVIDER_ID = 'quickmt-ctranslate2-en-pl-' + QUICKMT_REVISION + '-shared-decoding-v1'

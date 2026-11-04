@@ -1,4 +1,4 @@
-"""Deterministic adapter lifecycle checks; not portal or device evidence."""
+"""Deterministic adapter lifecycle checks."""
 import io
 from dataclasses import replace
 from types import SimpleNamespace

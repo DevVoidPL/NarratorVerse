@@ -1,19 +1,4 @@
-"""Candidate lifecycle correlation. Diagnostics only, no decision changes.
-
-Hypothesis under test: a correctly recognised full subtitle appears as candidate
-1/2 but is never accepted, because the next observation is not similar enough, so
-the candidate is replaced or expires.
-
-Most of this lifecycle already existed in OcrDecisionObservation (bounded to
-OCR_DECISION_HISTORY_LIMIT = 20): raw/filtered/normalized text, confidence,
-candidate_observation_count / candidate_required_observations (the 1/2 counter),
-candidate_similarity, candidate_match_kind, the decision vocabulary covering
-created / retained / accepted / replaced / expired / reset, and rejection_reason.
-
-What was missing was an identity: candidate_identity is the normalized text and
-changes on replacement, so observations could not be grouped and a replacement
-could not name what it displaced. These tests cover only that addition.
-"""
+"""Candidate lifecycle correlation. Diagnostics only, no decision changes."""
 from __future__ import annotations
 import pytest
 from game_optimization_linux.services.narrator_pipeline import SubtitleTextGate

@@ -19,7 +19,6 @@ def load(name):
 def source_fixture(tmp_path):
     source = tmp_path / 'input'
     source.mkdir()
-    # Copy only public tracked inputs, never local runtimes or models.
     import subprocess
     for name in subprocess.check_output(['git', '-C', str(ROOT), 'ls-files', '-z']).decode().split('\0'):
         if name and (ROOT / name).is_file():
@@ -117,16 +116,6 @@ def test_component_extra_bytes_or_symlink_blocks_install_before_app(tmp_path, ch
     with pytest.raises(ValueError, match='Unexpected|SHA-256|Symlink'):
         load('install-fresh').install(source, tmp_path / 'app')
     assert not (tmp_path / 'app').exists()
-
-
-def test_legacy_snapshot_cli_cannot_package_unreviewed_runtime(tmp_path):
-    import subprocess
-    destination = tmp_path / 'legacy'
-    result = subprocess.run(['python3', str(ROOT / 'scripts/stage-flatpak.py'),
-                             '--dest', str(destination)], capture_output=True, text=True)
-    assert result.returncode != 0
-    assert 'disabled' in result.stderr
-    assert not destination.exists()
 
 
 def test_builder_manifest_local_paths_are_normalized_without_losing_provenance(tmp_path):

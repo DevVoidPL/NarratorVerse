@@ -1,4 +1,4 @@
-"""Adapter runtime probes; controlled results, not real native load evidence."""
+"""Adapter runtime probes."""
 import subprocess
 from types import SimpleNamespace
 from unittest.mock import patch

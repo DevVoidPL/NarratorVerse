@@ -854,26 +854,7 @@ class TesseractOcrProvider:
 
     @staticmethod
     def _source_resolution(image: QImage) -> int:
-        """Report the image DPI that Tesseract should assume.
-
-        In practice this is always 96 today: capture frames are raw pixel
-        buffers, CaptureFrame carries no DPI field, and nothing calls
-        setDotsPerMeter, so every QImage keeps Qt's default dotsPerMeterX of
-        3780 -- exactly 96 DPI. The older CLI path reported the same value,
-        because Qt's PNG encoder writes that number into the pHYs chunk and
-        Tesseract read the DPI from the file.
-
-        Open follow-up (deliberately not changed here): _preprocess_frame
-        upscales by roughly OCR_UPSCALE_FACTOR, and QImage.scaled() copies DPI
-        metadata unchanged, so the enlarged image still declares 96 DPI while
-        being closer to ~192 DPI relative to the original content. This is a
-        tuning question, not a defect: real sessions have reached 0.963 phrase
-        confidence with near-perfect text at 96 DPI, so the current value
-        demonstrably does not prevent good recognition. Deciding it needs a
-        measurement rather than a guess -- declared DPI (96 vs 192 vs ~300)
-        plotted against phrase confidence and character accuracy over one fixed
-        corpus of saved ROI captures, with every other OCR setting held constant.
-        """
+        """Qt capture images use 96 DPI; scaling preserves that metadata."""
 
         dots_per_meter = image.dotsPerMeterX()
         if dots_per_meter <= 0:
@@ -1528,14 +1509,7 @@ class TesseractOcrProvider:
         float | None,
         list[dict[str, object]],
     ]:
-        """Keep literal OCR text while conservatively excluding proven noise.
-
-        Tesseract confidence is attached to individual word rows.  Previously,
-        invalid/weak rows were omitted from the phrase confidence calculation
-        but still copied into the phrase itself.  A strong subtitle line could
-        therefore make a phrase pass while unrelated zero-confidence lines or
-        suffix clusters were narrated with it.
-        """
+        """Keep literal OCR text; exclude invalid and low-confidence noise rows from both text and confidence."""
 
         raw_text, raw_confidence, parsed_tokens = (
             TesseractOcrProvider._parse_tsv_detailed(payload)
@@ -1566,11 +1540,8 @@ class TesseractOcrProvider:
                 if not bool(token["valid_confidence"]):
                     token["included"] = False
                     token["filter_reason"] = "invalid_confidence"
-            # A previous version removed every line below 0.50 whenever another
-            # line was strong. That could erase a legitimate short subtitle if
-            # a HUD label happened to receive the stronger score. Keep an
-            # uncertain, natural-looking line; remove only a very weak line or
-            # one whose token composition independently identifies it as noise.
+            # A strong HUD label can outscore a real subtitle. Low confidence
+            # alone is insufficient to discard a natural-looking line.
             if (
                 strongest_line is not None
                 and strongest_line >= OCR_STRONG_LINE_CONFIDENCE

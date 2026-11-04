@@ -1,13 +1,4 @@
-"""Capture diagnostics plumbing and the per-session subtitle loss funnel.
-
-Two real defects motivated these tests:
-
-* the panel reported "Frames received: 0" and "Not negotiated" while the capture
-  log proved frames were flowing, because the counters live on the GStreamer
-  transport and the pipeline only holds the capture provider;
-* "Dropped spoken lines" reported 0 while most dialogue was being lost, because
-  it only counts audio-queue supersessions - losses happen much earlier.
-"""
+"""Capture diagnostics plumbing and the per-session subtitle loss funnel."""
 from __future__ import annotations
 from pathlib import Path
 from game_optimization_linux.models.narrator import NarratorSessionSnapshot

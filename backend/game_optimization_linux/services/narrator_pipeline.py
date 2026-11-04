@@ -3120,15 +3120,12 @@ class NarratorPipeline:
             )
             self._owns_tts_executor = True
         else:
-            # Lightweight deterministic tests may intentionally share one
-            # injected executor; production always takes the dedicated branch.
             self._tts_executor = self._executor
             self._owns_tts_executor = False
         self._clock = clock
         self._events: SimpleQueue[NarratorEvent] = SimpleQueue()
         self._lock = RLock()
-        # A delivered Future is a single operation, even if its completion is
-        # delivered again. Weak references do not retain completed audio/results.
+        # Completion callbacks can repeat; weak references avoid retaining results.
         self._consumed_completions: WeakSet = WeakSet()
         self._settings: NarratorGameSettings | None = None
         self._session_id = ""

@@ -1,8 +1,4 @@
-"""Speech-rate and articulation parameter handling for the Piper narrator.
-
-These tests assert the parameters handed to Piper, never the audio itself.
-Piper's length_scale is inverse to speed: below 1 is faster, above 1 is slower.
-"""
+"""Speech-rate and articulation parameter handling for the Piper narrator."""
 from __future__ import annotations
 from dataclasses import dataclass
 import logging

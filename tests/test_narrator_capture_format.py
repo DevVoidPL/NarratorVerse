@@ -1,11 +1,4 @@
-"""PipeWire capture format negotiation, restart policy and diagnostics.
-
-Background: pipewiresrc advertises ANY caps and derives what it offers PipeWire
-from what is downstream of it. handle_format_change() intersects the format
-PipeWire chose with those downstream caps and, when the intersection is empty,
-kills the stream with pw_stream_set_error(-EINVAL, "unhandled format"). A
-system-memory-only tail therefore cannot negotiate a DMA-BUF stream at all.
-"""
+"""PipeWire capture format negotiation, restart policy and diagnostics."""
 from __future__ import annotations
 import subprocess
 import pytest

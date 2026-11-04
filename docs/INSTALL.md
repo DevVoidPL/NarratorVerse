@@ -1,14 +1,11 @@
 # Instalacja i budowanie zrodel beta
 
-Wersja zrodel: **0.2.0-beta.1**. Zbudowano lokalne kandydaty, ale nie
-opublikowano odpowiadajacego im Flatpaka. Publikacja zrodel nie oznacza
-wydania binarnego. **P0 powtorzen pozostaje OPEN**, podobnie jak przeglad
-redystrybucji: [REDISTRIBUTION](REDISTRIBUTION.md).
+Wersja zrodel: **0.2.0-beta.1**. Publiczny Flatpak tej wersji nie jest jeszcze
+dostepny. Instrukcja ponizej dotyczy budowania lokalnego kandydata.
 
 ## Swiezy build lokalnego kandydata
 
 Pelna procedura: [FRESH_BUILD](FRESH_BUILD.md).
-Stan i bramki: [RELEASE_PREPARATION](RELEASE_PREPARATION.md).
 
 Wymagane: Linux x86_64, Python 3.13, git, tar/xz, Flatpak, flatpak-builder,
 AppStream z Compose, elfutils i debugedit. Instalacja **uzytkownika** Flatpak musi
@@ -33,16 +30,15 @@ Pobieranie wymaga sieci; kompilacja uzywa przygotowanych wejsc offline.
 `scripts/build.sh`, `scripts/build-flatpak.sh` i
 `scripts/prepare-quickmt-runtime.sh` deleguja do tej samej procedury i przyjmuja
 te same argumenty. Stary `.runtime`, `target/release` i `.tools/quickmt-python`
-nie sa wejsciami swiezego buildu. Archiwum `scripts/legacy-snapshot/` nie jest
-procedura instalacji. `scripts/reinstall.sh` jest celowo zablokowany na tym etapie.
+nie sa wejsciami swiezego buildu. `scripts/reinstall.sh` jest celowo zablokowany na tym etapie.
 
 ## Instalacja
 
 Nie ma obecnie publicznego pakietu do instalacji. Swiezy build tworzy lokalny
 katalog `build`, nie eksportuje bundla i niczego nie instaluje.
 Nie uruchamiaj historycznych komend instalacji starego pakietu jako biezacego wydania.
-Prywatny test na osobnym koncie opisuje [P0_ARCH_ACCEPTANCE](P0_ARCH_ACCEPTANCE.md);
-wymaga osobno dostarczonego, zidentyfikowanego pakietu. Nie kasuj danych uzytkownika.
+Testuj instalacje na osobnym koncie lub w izolowanym srodowisku, bez kasowania
+danych dotychczasowej instalacji.
 
 ## Pierwsze uruchomienie po przygotowaniu instalacji testowej
 

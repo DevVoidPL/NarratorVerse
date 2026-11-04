@@ -770,19 +770,7 @@ class NarratorSessionSnapshot:
     generation: int = 0
 
     def narration_funnel_summary(self) -> dict[str, int]:
-        """Aggregate the raw decision counts into an interpretable funnel.
-
-        Every stage where a subtitle can be lost is reported, using the
-        pipeline's existing decision names.
-
-        ``candidate_abandoned`` is derived, because no single event marks it. A
-        candidate that has been seen once and never confirmed disappears through
-        one of three existing decisions: the subtitle changed to something
-        dissimilar (``candidate_replaced_dissimilar``), the stability window
-        elapsed (``candidate_window_expired``), or a later observation reset it
-        (``candidate_reset_*``). Summing those gives the number of candidates
-        that reached 1/2 and were silently dropped, which no other counter shows.
-        """
+        """Count abandoned candidates from replacements, expirations and resets."""
 
         counts = dict(self.narration_funnel)
 

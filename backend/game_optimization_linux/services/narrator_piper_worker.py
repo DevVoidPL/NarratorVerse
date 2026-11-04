@@ -69,13 +69,7 @@ def _load_voice(model_path: Path, config_path: Path) -> object:
 
 
 def _voice_default_length_scale(voice: object) -> float:
-    """Read the voice's own default length_scale from its loaded config.
-
-    Piper stores this in the ``inference`` block of the ``.onnx.json`` file and
-    exposes it as ``PiperVoice.config.length_scale``.  Both currently installed
-    Polish voices default to 1.0, so this changes nothing for them today; it
-    keeps the rate control correct if a voice with another default is added.
-    """
+    """Read the voice's configured natural pace, defaulting to 1.0."""
 
     config = getattr(voice, "config", None)
     value = getattr(config, "length_scale", None)

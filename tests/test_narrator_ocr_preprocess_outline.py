@@ -1,10 +1,4 @@
-"""Opt-in outline preprocessing (GAME_OPTIMIZATION_NARRATOR_OCR_PREPROCESS).
-
-outline: bright (>=190) pixels with a dark (<=110) pixel within radius 2.
-outline_adaptive: same, threshold 220 when >15% of pixels are >=190.
-Both keep only the dark-text fallback (no too_many_bright_pixels); default and
-bright_mask are unchanged.
-"""
+"""Opt-in outline preprocessing (GAME_OPTIMIZATION_NARRATOR_OCR_PREPROCESS)."""
 from __future__ import annotations
 import logging
 import subprocess

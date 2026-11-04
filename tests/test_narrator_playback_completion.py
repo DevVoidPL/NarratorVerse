@@ -1,14 +1,4 @@
-"""Truncated narrator speech: completion must mean the PCM was actually played.
-
-Real evidence: the accepted subtitle and the spoken phrase both held the complete
-sentence, "Superseded in audio queue" stayed 0, and capture was healthy - yet only
-about half the utterance was audible. So the loss happens after complete text
-reached the audio path.
-
-QAudioSink enters IdleState whenever it has no data to process, which includes a
-buffer underrun, not only true end of stream. Treating IdleState as success is
-therefore how a half-played utterance gets reported as finished.
-"""
+"""Truncated narrator speech: completion must mean the PCM was actually played."""
 from __future__ import annotations
 from types import SimpleNamespace
 import pytest

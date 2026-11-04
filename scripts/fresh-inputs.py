@@ -72,7 +72,6 @@ def component_manifest(directory, metadata):
         if path.is_file() and path.name != 'component.json':
             files.append({'path': path.relative_to(directory).as_posix(),
                           'size': path.stat().st_size, 'sha256': digest(path)})
-    # Existing component reader requires this stable schema identity.
     manifest = dict(metadata, schema_version=1, managed_by='game-optimization-linux', files=files)
     (directory / 'component.json').write_text(json.dumps(manifest, indent=2) + '\n')
 

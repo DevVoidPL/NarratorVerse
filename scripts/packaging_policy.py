@@ -62,7 +62,6 @@ def validate_components(root, entries):
 def normalize_manifest(path, work):
     """Builder writes its expanded manifest into /app after installation."""
     text = path.read_text()
-    # Structural JSON roundtrip ensures unusual path characters stay valid.
     def replace(value):
         if isinstance(value, str):
             return value.replace(str(work), '@WORK@')

@@ -1,13 +1,4 @@
-"""One subtitle episode is read exactly once.
-
-Confirmed bug: the same line was sometimes spoken two or three times, including
-in Batman where OCR reads it almost perfectly, so garbage on the edges was not
-the only cause. The remaining cause was the cooldown: once it elapsed, a subtitle
-still on screen passed again.
-
-An episode starts when a phrase is handed onwards for synthesis and ends only on
-a real disappearance or a clearly different accepted phrase.
-"""
+"""One subtitle episode is read exactly once."""
 from __future__ import annotations
 import pytest
 from game_optimization_linux.services.narrator_pipeline import _DEDUP_EPISODE_ABSENT_FRAMES, PhraseDeduplicator

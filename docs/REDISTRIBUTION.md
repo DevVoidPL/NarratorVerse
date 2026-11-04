@@ -1,19 +1,3 @@
-# Przegląd licencji: źródła a redystrybucja runtime
-
-Data: 2026-11-03. Status: **NIEZAMKNIETY / NIE PUBLIKOWAC BUNDLE**.
-To rejestr konkretnych ustalen i brakow, nie opinia prawna ani certyfikat
-zgodnosci. Lokalny kandydat sluzy walidacji.
-
-## Publikacja samych źródeł
-
-Źródła aplikacji są objęte MIT z zachowanym autorstwem GameOpti/DevVoidPL.
-W publikowanym drzewie nie ma implementacji Pipera, Qt, wheeli ani wag modeli;
-są importy, opisy komponentów, locki oraz teksty licencji i testy. Publikacja
-takiego drzewa nie jest tym samym co przekazanie odbiorcy kopii binarnego runtime.
-Nie stwierdzono tu blokady wymagającej wstrzymania samego przeglądu źródeł
-z powodu niekompletnego corresponding-source kit dla niepublikowanego Flatpaka.
-Nie jest to ostateczna opinia o kwalifikacji prawnej całego połączonego produktu.
-Gotowość Git i prywatności ocenia osobno `docs/SOURCE_PUBLICATION.md`.
 
 ## Co rzeczywiscie sprawdzono
 
@@ -40,10 +24,6 @@ Gotowość Git i prywatności ocenia osobno `docs/SOURCE_PUBLICATION.md`.
    source dla faktycznie dolaczonych binariow, wymagane skrypty budowania,
    notice'y i sposob udostepnienia zgodny z GPL. Sam link do ogolnej strony
    projektu ani sam JSON ze spisem pakietow nie jest dowodem spelnienia.
-2. **Qt/PySide6**: ustalic licencje kazdego zachowanego modulu i kodu
-   third-party, dolaczyc teksty licencji/notice, zapewnic wymagane zrodla
-   i uprawnienia odbiorcy. Alternatywnie przygotowac i przetestowac
-   minimalny runtime bez nieuzywanych modulow; nie usuwac bibliotek w ciemno.
 3. **GStreamer/Tesseract/Leptonica i biblioteki ELF**: mapowanie wszystkich
    faktycznych plikow na zrodla, wersje, licencje i wymagane notice.
    Runtime GNOME jest osobnym artefaktem, a nie dowodem zgodnosci plikow

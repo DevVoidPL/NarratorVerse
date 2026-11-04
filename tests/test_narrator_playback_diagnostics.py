@@ -1,13 +1,4 @@
-"""Correlation logging for one playback request. Diagnostics only.
-
-Hypothesis under test: a corrected re-recognition of the same subtitle stops the
-utterance being played and restarts it from the beginning.
-
-The code refutes the "stops the playing one" half: _queue_playback never touches
-self._current, and audio.stop() has only two callers, neither on the acceptance
-path. These tests pin that, and pin the logging that distinguishes the three
-possible causes of a perceived interruption.
-"""
+"""Correlation logging for one playback request. Diagnostics only."""
 from __future__ import annotations
 import logging
 from types import SimpleNamespace

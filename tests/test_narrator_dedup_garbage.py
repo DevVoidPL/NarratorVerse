@@ -1,12 +1,4 @@
-"""Deduplication of a line re-recognised with OCR garbage at its edges.
-
-Confirmed user-visible bug: the same subtitle was spoken twice, because the
-second OCR result carried a garbage prefix or suffix, produced a different
-normalized identity, and slipped past the exact-match deduplicator.
-
-Only edge noise is forgiven. A changed or extra word inside the sentence must
-keep the phrases distinct, so negation and different verbs still narrate.
-"""
+"""Deduplication of a line re-recognised with OCR garbage at its edges."""
 from __future__ import annotations
 import pytest
 from game_optimization_linux.services.narrator_pipeline import PhraseDeduplicator, _dedup_is_garbage_variant, _dedup_is_split_merge_variant

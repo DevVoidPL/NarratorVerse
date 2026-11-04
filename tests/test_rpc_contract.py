@@ -1,8 +1,4 @@
-"""Source contract checks for the real Rust allowlist, UI and Python dispatch.
-
-These checks do not launch Tauri, a backend process or an audio server. Rust
-compilation and exercising the installed Flatpak are still required separately.
-"""
+"""Source contract checks for the real Rust allowlist, UI and Python dispatch."""
 import ast
 from pathlib import Path
 import re

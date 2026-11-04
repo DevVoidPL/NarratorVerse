@@ -1,8 +1,4 @@
-"""QuickMT tokenization over the existing CPU/JSONL translation boundary.
-
-Preserve the tested beam sizes, decoding defaults and CPU thread policy.
-Only the model and its required tokenization differ in the initial A/B.
-"""
+"""QuickMT tokenization and CPU inference over JSONL."""
 from pathlib import Path
 
 from game_optimization_linux.services.narrator_translation_worker import (
